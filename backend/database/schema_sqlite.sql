@@ -16,12 +16,22 @@ CREATE TABLE IF NOT EXISTS users (
   otp_attempts INTEGER NOT NULL DEFAULT 0,
   storage_quota_bytes INTEGER NOT NULL DEFAULT 1073741824, -- 1 GB
   storage_used_bytes INTEGER NOT NULL DEFAULT 0,
+  is_admin INTEGER NOT NULL DEFAULT 0,
+  is_suspended INTEGER NOT NULL DEFAULT 0,
+  token_version INTEGER NOT NULL DEFAULT 1,
+  last_login_at DATETIME NULL,
+  failed_login_attempts INTEGER NOT NULL DEFAULT 0,
+  lockout_until DATETIME NULL,
+  admin_mfa_enabled INTEGER NOT NULL DEFAULT 0,
+  admin_mfa_secret TEXT NULL,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 CREATE INDEX IF NOT EXISTS idx_users_username ON users (username);
 CREATE INDEX IF NOT EXISTS idx_users_email ON users (email);
 CREATE INDEX IF NOT EXISTS idx_users_phone ON users (phone);
 CREATE INDEX IF NOT EXISTS idx_users_google ON users (google_id);
+CREATE INDEX IF NOT EXISTS idx_users_admin ON users (is_admin);
+CREATE INDEX IF NOT EXISTS idx_users_suspended ON users (is_suspended);
 
 -- Table: share_sessions
 CREATE TABLE IF NOT EXISTS share_sessions (
@@ -153,3 +163,38 @@ CREATE TABLE IF NOT EXISTS notifications (
 );
 CREATE INDEX IF NOT EXISTS idx_notification_user ON notifications (user_id);
 CREATE INDEX IF NOT EXISTS idx_notification_unread ON notifications (user_id, is_read);
+
+-- Table: login_logs (Login security monitoring and rate limiting)
+CREATE TABLE IF NOT EXISTS login_logs (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  username_or_email TEXT NOT NULL,
+  user_id INTEGER NULL,
+  ip_address TEXT NULL,
+  user_agent TEXT NULL,
+  status TEXT NOT NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_login_username ON login_logs (username_or_email);
+CREATE INDEX IF NOT EXISTS idx_login_created ON login_logs (created_at);
+
+-- Table: admin_audit_logs (Tamper-resistant administrative audit trail)
+CREATE TABLE IF NOT EXISTS admin_audit_logs (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  admin_user_id INTEGER NOT NULL,
+  admin_username TEXT NOT NULL,
+  action TEXT NOT NULL,
+  target_type TEXT NOT NULL,
+  target_id TEXT NULL,
+  details TEXT NULL,
+  ip_address TEXT NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_audit_admin ON admin_audit_logs (admin_user_id);
+CREATE INDEX IF NOT EXISTS idx_audit_action ON admin_audit_logs (action);
+CREATE INDEX IF NOT EXISTS idx_audit_created ON admin_audit_logs (created_at);
+
+-- Table: revoked_tokens (Instant token blacklist on logout / revocation)
+CREATE TABLE IF NOT EXISTS revoked_tokens (
+  token TEXT PRIMARY KEY,
+  revoked_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);

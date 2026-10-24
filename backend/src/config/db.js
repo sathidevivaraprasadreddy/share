@@ -3,6 +3,7 @@ import fs from 'fs';
 import { fileURLToPath } from 'url';
 import mysql from 'mysql2/promise';
 import dotenv from 'dotenv';
+import bcrypt from 'bcryptjs';
 import { createRequire } from 'module';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -41,7 +42,15 @@ class SqliteAdapter {
         'ALTER TABLE users ADD COLUMN google_id TEXT NULL;',
         'ALTER TABLE users ADD COLUMN otp_code TEXT NULL;',
         'ALTER TABLE users ADD COLUMN otp_expires_at DATETIME NULL;',
-        'ALTER TABLE users ADD COLUMN otp_attempts INTEGER NOT NULL DEFAULT 0;'
+        'ALTER TABLE users ADD COLUMN otp_attempts INTEGER NOT NULL DEFAULT 0;',
+        'ALTER TABLE users ADD COLUMN is_admin INTEGER NOT NULL DEFAULT 0;',
+        'ALTER TABLE users ADD COLUMN is_suspended INTEGER NOT NULL DEFAULT 0;',
+        'ALTER TABLE users ADD COLUMN token_version INTEGER NOT NULL DEFAULT 1;',
+        'ALTER TABLE users ADD COLUMN last_login_at DATETIME NULL;',
+        'ALTER TABLE users ADD COLUMN failed_login_attempts INTEGER NOT NULL DEFAULT 0;',
+        'ALTER TABLE users ADD COLUMN lockout_until DATETIME NULL;',
+        'ALTER TABLE users ADD COLUMN admin_mfa_enabled INTEGER NOT NULL DEFAULT 0;',
+        'ALTER TABLE users ADD COLUMN admin_mfa_secret TEXT NULL;'
       ];
 
       for (const alterSql of columnsToAdd) {
@@ -58,8 +67,49 @@ class SqliteAdapter {
         const schemaSql = fs.readFileSync(schemaPath, 'utf8');
         this.db.exec(schemaSql);
       }
+
+      // 3. Provision owner-designated initial administrator account
+      this.provisionAdmin();
     } catch (err) {
       console.warn('[SQLite] Schema init notice:', err.message);
+    }
+  }
+
+  provisionAdmin() {
+    try {
+      const adminUsername = (process.env.ADMIN_USERNAME || 'admin').trim().toLowerCase();
+      const adminPass = process.env.ADMIN_INITIAL_PASSWORD || 'AdminSecure@QuickShare2026!';
+      const mfaSecret = process.env.ADMIN_MFA_CODE || '849201';
+
+      // Check if any administrator currently exists
+      const checkStmt = this.db.prepare('SELECT id, username, is_admin FROM users WHERE is_admin = 1');
+      const existingAdmins = checkStmt.all();
+
+      if (existingAdmins.length === 0) {
+        const salt = bcrypt.genSaltSync(10);
+        const hash = bcrypt.hashSync(adminPass, salt);
+
+        // Check if a user with adminUsername already exists
+        const userStmt = this.db.prepare('SELECT id FROM users WHERE username = ?');
+        const userRow = userStmt.get(adminUsername);
+
+        if (userRow) {
+          const updateStmt = this.db.prepare(
+            'UPDATE users SET is_admin = 1, password_hash = ?, admin_mfa_secret = ?, is_suspended = 0 WHERE id = ?'
+          );
+          updateStmt.run(hash, mfaSecret, userRow.id);
+          console.log(`[Security] Existing user "${adminUsername}" elevated to Administrator.`);
+        } else {
+          const insertStmt = this.db.prepare(`
+            INSERT INTO users (username, email, display_name, password_hash, is_admin, admin_mfa_secret, avatar_color)
+            VALUES (?, 'admin@quickshare.local', 'System Administrator', ?, 1, ?, '#1e293b')
+          `);
+          insertStmt.run(adminUsername, hash, mfaSecret);
+          console.log(`[Security] Initial administrator account "${adminUsername}" provisioned from environment.`);
+        }
+      }
+    } catch (err) {
+      console.warn('[Security] Admin provisioning notice:', err.message);
     }
   }
 

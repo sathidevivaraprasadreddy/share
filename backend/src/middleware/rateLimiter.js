@@ -35,3 +35,15 @@ export const downloadLimiter = rateLimit({
     error: 'Download rate limit reached. Please try again later.'
   }
 });
+
+// Strict rate limiter for administrator authentication attempts (locks out after multiple attempts)
+export const adminLoginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: process.env.NODE_ENV === 'test' ? 100 : 15, // 15 attempts per 15 min in dev/prod, 100 in test
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    success: false,
+    error: 'Too many admin authentication attempts. This endpoint is temporarily locked for 15 minutes.'
+  }
+});

@@ -11,6 +11,7 @@ import InboxView from './components/InboxView';
 import MyFilesView from './components/MyFilesView';
 import GroupsView from './components/GroupsView';
 import ActivityView from './components/ActivityView';
+import AdminControlCenter from './components/AdminControlCenter';
 import { checkHealth, getMe, logoutUser, revokeSession } from './services/api';
 import { AlertCircle, CheckCircle, ShieldCheck, Heart } from 'lucide-react';
 
@@ -34,6 +35,25 @@ export default function App() {
     }
   });
   const [qrModalUrl, setQrModalUrl] = useState(null);
+
+  // Private Administrative Control Center route detection (/control-center)
+  const [isAdminRoute, setIsAdminRoute] = useState(() => {
+    return (
+      window.location.pathname.startsWith('/control-center') ||
+      window.location.hash === '#/control-center'
+    );
+  });
+
+  useEffect(() => {
+    const handlePopState = () => {
+      setIsAdminRoute(
+        window.location.pathname.startsWith('/control-center') ||
+        window.location.hash === '#/control-center'
+      );
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
 
   // Modals
   const [authModalOpen, setAuthModalOpen] = useState(false);
@@ -170,6 +190,17 @@ export default function App() {
       setCurrentView('transfer');
     }
   };
+
+  if (isAdminRoute) {
+    return (
+      <AdminControlCenter
+        onExit={() => {
+          window.history.pushState({}, '', '/');
+          setIsAdminRoute(false);
+        }}
+      />
+    );
+  }
 
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-b from-slate-50 via-slate-50 to-slate-100 font-sans text-slate-800 antialiased selection:bg-rose-500 selection:text-white">

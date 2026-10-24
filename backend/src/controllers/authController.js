@@ -4,6 +4,7 @@ import { signUserToken } from '../middleware/authMiddleware.js';
 import storageService from '../services/storageService.js';
 import { sendSmsOtp } from '../services/smsService.js';
 import { sendEmailOtp as dispatchEmailOtp } from '../services/emailService.js';
+import { recordLoginAttempt } from './adminController.js';
 
 const AVATAR_COLORS = [
   '#e11d48', '#2563eb', '#7c3aed', '#059669', '#d97706', '#0891b2', '#db2777'
@@ -35,6 +36,13 @@ export async function register(req, res, next) {
       return res.status(400).json({
         success: false,
         error: 'Username can only contain letters, numbers, and underscores (3-30 characters).'
+      });
+    }
+
+    if (cleanUsername === 'admin' || cleanUsername.startsWith('admin_') || cleanUsername === 'root') {
+      return res.status(400).json({
+        success: false,
+        error: 'This username is reserved by the system.'
       });
     }
 
@@ -131,12 +139,14 @@ export async function login(req, res, next) {
     const db = getDbPool();
 
     const [users] = await db.query(
-      `SELECT id, username, email, password_hash, display_name, avatar_color, storage_quota_bytes, storage_used_bytes, created_at
+      `SELECT id, username, email, password_hash, display_name, avatar_color, storage_quota_bytes, storage_used_bytes, 
+              is_admin, is_suspended, token_version, failed_login_attempts, lockout_until, created_at
        FROM users WHERE username = ? OR email = ?`,
       [cleanIdentifier, cleanIdentifier]
     );
 
     if (users.length === 0) {
+      await recordLoginAttempt(cleanIdentifier, null, 'failed_user_not_found', req);
       return res.status(401).json({
         success: false,
         error: 'Invalid credentials. User not found.'
@@ -144,14 +154,53 @@ export async function login(req, res, next) {
     }
 
     const userRecord = users[0];
+
+    // Check account lockout
+    if (userRecord.lockout_until && new Date(userRecord.lockout_until) > new Date()) {
+      const waitMins = Math.ceil((new Date(userRecord.lockout_until) - new Date()) / 60000);
+      await recordLoginAttempt(cleanIdentifier, userRecord.id, 'failed_locked_out', req);
+      return res.status(429).json({
+        success: false,
+        error: `Account is temporarily locked due to repeated failed attempts. Please retry in ${waitMins} minute(s).`
+      });
+    }
+
+    // Check account suspension
+    if (userRecord.is_suspended) {
+      await recordLoginAttempt(cleanIdentifier, userRecord.id, 'failed_suspended', req);
+      return res.status(403).json({
+        success: false,
+        error: 'Your account has been suspended by an administrator.'
+      });
+    }
+
     const passwordMatch = await bcrypt.compare(password, userRecord.password_hash);
 
     if (!passwordMatch) {
+      const nextFails = (userRecord.failed_login_attempts || 0) + 1;
+      let lockoutUntil = null;
+      if (nextFails >= 5) {
+        lockoutUntil = new Date(Date.now() + 15 * 60 * 1000).toISOString();
+      }
+
+      await db.query(
+        `UPDATE users SET failed_login_attempts = ?, lockout_until = ? WHERE id = ?`,
+        [nextFails, lockoutUntil, userRecord.id]
+      );
+
+      await recordLoginAttempt(cleanIdentifier, userRecord.id, 'failed_incorrect_password', req);
       return res.status(401).json({
         success: false,
         error: 'Invalid credentials. Incorrect password.'
       });
     }
+
+    // Reset login failures and record success
+    await db.query(
+      `UPDATE users SET failed_login_attempts = 0, lockout_until = NULL, last_login_at = CURRENT_TIMESTAMP WHERE id = ?`,
+      [userRecord.id]
+    );
+    await recordLoginAttempt(cleanIdentifier, userRecord.id, 'success', req);
 
     const user = {
       id: userRecord.id,
@@ -161,10 +210,11 @@ export async function login(req, res, next) {
       avatarColor: userRecord.avatar_color,
       storageQuotaBytes: userRecord.storage_quota_bytes,
       storageUsedBytes: userRecord.storage_used_bytes,
+      isAdmin: Boolean(userRecord.is_admin),
       createdAt: userRecord.created_at
     };
 
-    const token = signUserToken(user);
+    const token = signUserToken(userRecord);
 
     return res.json({
       success: true,
@@ -684,6 +734,16 @@ export async function loginWithGoogle(req, res, next) {
     let user;
     if (existing.length > 0) {
       const u = existing[0];
+      if (u.is_suspended) {
+        await recordLoginAttempt(cleanEmail, u.id, 'google_failed_suspended', req);
+        return res.status(403).json({
+          success: false,
+          error: 'Your account has been suspended by an administrator.'
+        });
+      }
+
+      await recordLoginAttempt(cleanEmail, u.id, 'google_success', req);
+
       if (!u.google_id) {
         await db.query(`UPDATE users SET google_id = ? WHERE id = ?`, [cleanGoogleId, u.id]);
       }

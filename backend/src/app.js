@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import shareRoutes from './routes/shareRoutes.js';
+import adminRoutes from './routes/adminRoutes.js';
 import { apiLimiter } from './middleware/rateLimiter.js';
 import { errorHandler } from './middleware/errorHandler.js';
 
@@ -63,6 +64,9 @@ app.use(express.urlencoded({ extended: true }));
 
 // Rate limiting on all API routes
 app.use('/api', apiLimiter);
+
+// Mount administrative routes (private control center)
+app.use('/api/admin', adminRoutes);
 
 // Mount share routes
 app.use('/api', shareRoutes);
