@@ -1,34 +1,49 @@
 import React, { useState, useEffect } from 'react';
 import Navbar from './components/Navbar';
-import FileUploader from './components/FileUploader';
-import FileList from './components/FileList';
+import TransferDashboard from './components/TransferDashboard';
 import ShareResult from './components/ShareResult';
 import DownloadView from './components/DownloadView';
 import QRCodeModal from './components/QRCodeModal';
-import { uploadFiles, revokeSession, checkHealth } from './services/api';
-import { AlertCircle, CheckCircle, ShieldCheck, Zap, Lock, RefreshCw } from 'lucide-react';
+import AuthModal from './components/AuthModal';
+import ProfileModal from './components/ProfileModal';
+import InboxView from './components/InboxView';
+import MyFilesView from './components/MyFilesView';
+import GroupsView from './components/GroupsView';
+import ActivityView from './components/ActivityView';
+import { checkHealth, getMe, logoutUser, revokeSession } from './services/api';
+import { AlertCircle, CheckCircle, ShieldCheck, Heart } from 'lucide-react';
 
 export default function App() {
+  const [currentView, setCurrentView] = useState('transfer'); // 'transfer' | 'inbox' | 'my-files' | 'groups' | 'activity'
+  const [currentUser, setCurrentUser] = useState(null);
   const [tokenParam, setTokenParam] = useState(null);
-  const [files, setFiles] = useState([]);
-  const [expiryHours, setExpiryHours] = useState(24);
-  const [uploading, setUploading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(0);
   const [shareResult, setShareResult] = useState(null);
   const [qrModalUrl, setQrModalUrl] = useState(null);
+
+  // Modals
+  const [authModalOpen, setAuthModalOpen] = useState(false);
+  const [profileModalOpen, setProfileModalOpen] = useState(false);
+
+  // Feedback notifications
   const [errorMessage, setErrorMessage] = useState(null);
   const [successNotification, setSuccessNotification] = useState(null);
   const [serverHealthy, setServerHealthy] = useState(null);
 
-  // Check URL query parameters for token (e.g. ?token=abc)
+  // Check URL query parameters and verify user auth session
   useEffect(() => {
+    // 1. Check for ?token=xyz or /share/xyz in URL
     const params = new URLSearchParams(window.location.search);
     const token = params.get('token');
     if (token) {
       setTokenParam(token);
+    } else {
+      const match = window.location.pathname.match(/\/share\/([a-zA-Z0-9_-]+)/);
+      if (match) {
+        setTokenParam(match[1]);
+      }
     }
 
-    // Health check
+    // 2. Health check
     async function verifyBackend() {
       try {
         const res = await checkHealth();
@@ -42,6 +57,25 @@ export default function App() {
       }
     }
     verifyBackend();
+
+    // 3. User session check if token exists in localStorage
+    async function loadCurrentUser() {
+      const savedToken = localStorage.getItem('quickshare_token');
+      if (savedToken) {
+        try {
+          const res = await getMe();
+          if (res.success && res.user) {
+            setCurrentUser(res.user);
+          }
+        } catch (err) {
+          if (err.response?.status === 401) {
+            localStorage.removeItem('quickshare_token');
+            setCurrentUser(null);
+          }
+        }
+      }
+    }
+    loadCurrentUser();
   }, []);
 
   // Clear notifications after timeout
@@ -59,55 +93,11 @@ export default function App() {
     }
   }, [successNotification]);
 
-  const handleFilesSelected = (newFiles) => {
-    setErrorMessage(null);
-    setFiles((prev) => {
-      // Append without duplicate filenames
-      const existingNames = new Set(prev.map((f) => f.name));
-      const filtered = newFiles.filter((f) => !existingNames.has(f.name));
-      return [...prev, ...filtered];
-    });
-  };
-
-  const handleRemoveFile = (index) => {
-    setFiles((prev) => prev.filter((_, i) => i !== index));
-  };
-
-  const handleClearFiles = () => {
-    setFiles([]);
-    setErrorMessage(null);
-  };
-
-  const handleUpload = async () => {
-    if (files.length === 0) return;
-    setUploading(true);
-    setUploadProgress(0);
-    setErrorMessage(null);
-
-    try {
-      const result = await uploadFiles(files, expiryHours, (progress) => {
-        setUploadProgress(progress);
-      });
-
-      if (result.success) {
-        setShareResult(result);
-        setFiles([]);
-      } else {
-        setErrorMessage(result.error || 'Failed to upload files.');
-      }
-    } catch (err) {
-      const msg = err.response?.data?.error || err.message || 'Error uploading files.';
-      setErrorMessage(msg);
-    } finally {
-      setUploading(false);
-    }
-  };
-
   const handleRevoke = async (shareToken, revokeToken) => {
     try {
       const res = await revokeSession(shareToken, revokeToken);
       if (res.success) {
-        setSuccessNotification('Sharing session has been revoked and files deleted.');
+        setSuccessNotification('Sharing session revoked and files removed permanently from storage.');
         setShareResult(null);
       }
     } catch (err) {
@@ -123,18 +113,44 @@ export default function App() {
 
     setTokenParam(null);
     setShareResult(null);
-    setFiles([]);
     setErrorMessage(null);
+    setCurrentView('transfer');
+  };
+
+  const handleLogout = () => {
+    logoutUser();
+    setCurrentUser(null);
+    setProfileModalOpen(false);
+    setSuccessNotification('Logged out successfully.');
+    if (currentView !== 'transfer') {
+      setCurrentView('transfer');
+    }
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-gradient-to-b from-slate-50 via-slate-50 to-slate-100">
-      {/* Navigation */}
-      <Navbar onReset={handleResetToUpload} serverHealthy={serverHealthy} />
+    <div className="min-h-screen flex flex-col bg-gradient-to-b from-slate-50 via-slate-50 to-slate-100 font-sans text-slate-800 antialiased selection:bg-rose-500 selection:text-white">
+      {/* Navigation Header */}
+      <Navbar
+        currentView={currentView}
+        onChangeView={(view) => {
+          setTokenParam(null);
+          setShareResult(null);
+          setCurrentView(view);
+        }}
+        currentUser={currentUser}
+        onOpenAuth={() => setAuthModalOpen(true)}
+        onOpenProfile={() => setProfileModalOpen(true)}
+        onReset={handleResetToUpload}
+        onSelectShare={(token) => {
+          setTokenParam(token);
+          setCurrentView('transfer');
+        }}
+        serverHealthy={serverHealthy}
+      />
 
       {/* Main Content Area */}
-      <main className="flex-1 max-w-2xl w-full mx-auto px-4 py-8 sm:py-12 flex flex-col justify-center">
-        {/* Alerts / Notifications */}
+      <main className="flex-1 max-w-4xl w-full mx-auto px-4 py-8 sm:py-10 flex flex-col">
+        {/* Alerts / Error Notification */}
         {errorMessage && (
           <div className="mb-6 p-4 rounded-2xl bg-rose-50 border border-rose-200/90 text-rose-700 flex items-start gap-3 shadow-sm animate-fade-in">
             <AlertCircle className="w-5 h-5 shrink-0 mt-0.5 text-rose-600" />
@@ -148,6 +164,7 @@ export default function App() {
           </div>
         )}
 
+        {/* Success Notification */}
         {successNotification && (
           <div className="mb-6 p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-800 flex items-start gap-3 shadow-sm animate-fade-in">
             <CheckCircle className="w-5 h-5 shrink-0 mt-0.5 text-emerald-600" />
@@ -155,7 +172,7 @@ export default function App() {
           </div>
         )}
 
-        {/* View Switch: Receiver (DownloadView) vs Sender (Upload/ShareResult) */}
+        {/* Dynamic View Router */}
         {tokenParam ? (
           <DownloadView
             token={tokenParam}
@@ -169,74 +186,70 @@ export default function App() {
             onRevoke={handleRevoke}
           />
         ) : (
-          <div className="space-y-6 animate-fade-in">
-            {/* Header intro */}
-            <div className="text-center space-y-2 mb-2">
-              <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">
-                Send files instantly.
-              </h1>
-              <p className="text-sm sm:text-base text-slate-500 max-w-md mx-auto">
-                No account required. Auto-expires automatically. ₹0 free ephemeral file sharing.
-              </p>
-            </div>
-
-            {/* Drag & drop upload area */}
-            <FileUploader
-              onFilesSelected={handleFilesSelected}
-              onError={(msg) => setErrorMessage(msg)}
-            />
-
-            {/* Selected files list & controls */}
-            {files.length > 0 && (
-              <FileList
-                files={files}
-                onRemoveFile={handleRemoveFile}
-                onClearFiles={handleClearFiles}
-                onUpload={handleUpload}
-                uploading={uploading}
-                uploadProgress={uploadProgress}
-                expiryHours={expiryHours}
-                setExpiryHours={setExpiryHours}
+          <>
+            {currentView === 'transfer' && (
+              <TransferDashboard
+                currentUser={currentUser}
+                onShareCompleted={(result) => setShareResult(result)}
+                onReceiveToken={(token) => setTokenParam(token)}
+                onRequestAuth={() => setAuthModalOpen(true)}
+                onError={(err) => setErrorMessage(err)}
+                onSuccess={(msg) => setSuccessNotification(msg)}
               />
             )}
 
-            {/* Feature Highlights */}
-            {files.length === 0 && (
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-6">
-                <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-xs flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center shrink-0">
-                    <Zap className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <h5 className="text-xs font-bold text-slate-800">Lightning Fast</h5>
-                    <p className="text-[11px] text-slate-500">Direct streaming transfer</p>
-                  </div>
-                </div>
-
-                <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-xs flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
-                    <Lock className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <h5 className="text-xs font-bold text-slate-800">Private & Secure</h5>
-                    <p className="text-[11px] text-slate-500">Cryptographic tokens</p>
-                  </div>
-                </div>
-
-                <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-xs flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
-                    <ShieldCheck className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <h5 className="text-xs font-bold text-slate-800">Auto Cleanup</h5>
-                    <p className="text-[11px] text-slate-500">Deletes after expiration</p>
-                  </div>
-                </div>
-              </div>
+            {currentView === 'inbox' && (
+              <InboxView
+                user={currentUser}
+                onRequireAuth={() => setAuthModalOpen(true)}
+              />
             )}
-          </div>
+
+            {currentView === 'my-files' && (
+              <MyFilesView
+                user={currentUser}
+                onRequireAuth={() => setAuthModalOpen(true)}
+                onSelectShare={(token) => setTokenParam(token)}
+              />
+            )}
+
+            {currentView === 'groups' && (
+              <GroupsView
+                user={currentUser}
+                onRequireAuth={() => setAuthModalOpen(true)}
+                onSelectShare={(token) => setTokenParam(token)}
+              />
+            )}
+
+            {currentView === 'activity' && (
+              <ActivityView
+                user={currentUser}
+                onRequireAuth={() => setAuthModalOpen(true)}
+                onSelectShare={(token) => setTokenParam(token)}
+              />
+            )}
+          </>
         )}
       </main>
+
+      {/* Auth Modal (Login & Register) */}
+      <AuthModal
+        isOpen={authModalOpen}
+        onClose={() => setAuthModalOpen(false)}
+        onAuthSuccess={(user) => {
+          setCurrentUser(user);
+          setSuccessNotification(`Welcome, ${user.displayName || user.username}!`);
+        }}
+      />
+
+      {/* Profile & Storage Quota Modal */}
+      <ProfileModal
+        isOpen={profileModalOpen}
+        onClose={() => setProfileModalOpen(false)}
+        user={currentUser}
+        onUpdateUser={(updated) => setCurrentUser(updated)}
+        onLogout={handleLogout}
+      />
 
       {/* QR Code Modal */}
       {qrModalUrl && (
@@ -247,8 +260,25 @@ export default function App() {
       )}
 
       {/* Footer */}
-      <footer className="py-6 border-t border-slate-200/80 bg-white/60 text-center text-xs text-slate-400">
-        <p>QuickShare • Free & Open Source Ephemeral File Sharing</p>
+      <footer className="py-6 border-t border-slate-200/80 bg-white/70 backdrop-blur-xs text-center text-xs text-slate-400">
+        <div className="max-w-5xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <span className="font-semibold text-slate-700">QuickShare</span>
+            <span>•</span>
+            <span>100% Free & Open-Source Ephemeral File Sharing</span>
+          </div>
+
+          <div className="flex items-center gap-4 text-[11px] text-slate-500">
+            <span className="inline-flex items-center gap-1">
+              <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+              <span>Zero-Log Storage Purge</span>
+            </span>
+            <span className="inline-flex items-center gap-1">
+              <Heart className="w-3.5 h-3.5 text-rose-500 fill-rose-500" />
+              <span>Self-Hosted & Cloud Ready</span>
+            </span>
+          </div>
+        </div>
       </footer>
     </div>
   );

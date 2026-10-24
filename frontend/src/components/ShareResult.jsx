@@ -9,7 +9,11 @@ import {
   Clock,
   Layers,
   HardDrive,
-  RotateCcw
+  RotateCcw,
+  Share2,
+  MessageCircle,
+  Mail,
+  Send
 } from 'lucide-react';
 import { formatFileSize, formatTimeRemaining } from '../utils/formatters';
 
@@ -21,6 +25,8 @@ export default function ShareResult({
 }) {
   const [copiedLink, setCopiedLink] = useState(false);
   const [copiedToken, setCopiedToken] = useState(false);
+  const [copiedCode, setCopiedCode] = useState(false);
+  const [copiedMessage, setCopiedMessage] = useState(false);
   const [showRevokeConfirm, setShowRevokeConfirm] = useState(false);
   const [revoking, setRevoking] = useState(false);
 
@@ -31,6 +37,14 @@ export default function ShareResult({
     navigator.clipboard.writeText(shareUrl);
     setCopiedLink(true);
     setTimeout(() => setCopiedLink(false), 2500);
+  };
+
+  const handleCopyCode = () => {
+    if (result.sixCode) {
+      navigator.clipboard.writeText(result.sixCode);
+      setCopiedCode(true);
+      setTimeout(() => setCopiedCode(false), 2500);
+    }
   };
 
   const handleCopyRevokeToken = () => {
@@ -48,6 +62,42 @@ export default function ShareResult({
     }
   };
 
+  const formattedSixCode = result.sixCode
+    ? `${result.sixCode.slice(0, 3)} ${result.sixCode.slice(3)}`
+    : null;
+
+  const shareText = result.sixCode
+    ? `Hey! I shared ${result.fileCount} file(s) with you via QuickShare.\n🔢 6-Digit Transfer Code: ${result.sixCode}\n🔗 Download Link: ${shareUrl}\n⏳ Auto-expires safely. ₹0 Free.`
+    : `Hey! I shared ${result.fileCount} file(s) with you via QuickShare.\n🔗 Download Link: ${shareUrl}\n⏳ Auto-expires safely. ₹0 Free.`;
+
+  const whatsappUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(shareText)}`;
+  const telegramUrl = `https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(
+    `QuickShare: ${result.fileCount} file(s) ready to download`
+  )}`;
+  const emailUrl = `mailto:?subject=${encodeURIComponent(
+    `QuickShare: ${result.fileCount} file(s) shared with you`
+  )}&body=${encodeURIComponent(shareText)}`;
+
+  const handleNativeShare = async () => {
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: 'QuickShare Transfer',
+          text: shareText,
+          url: shareUrl
+        });
+      } catch (err) {}
+    } else {
+      handleCopyLink();
+    }
+  };
+
+  const handleCopyMessage = () => {
+    navigator.clipboard.writeText(shareText);
+    setCopiedMessage(true);
+    setTimeout(() => setCopiedMessage(false), 2500);
+  };
+
   return (
     <div className="bg-white rounded-3xl border border-slate-200/90 shadow-sm p-6 sm:p-8 animate-fade-in space-y-6">
       {/* Header Banner */}
@@ -60,10 +110,53 @@ export default function ShareResult({
             Files Ready to Share!
           </h3>
           <p className="text-xs text-slate-500 mt-0.5">
-            Anyone with this link can download your files before expiry.
+            {result.directShare 
+              ? 'Transferred directly to recipient inbox & available via code or link.'
+              : 'Share via 6-digit code, instant link, or QR code before expiry.'}
           </p>
         </div>
       </div>
+
+      {/* 6-Digit Code Box (if present) */}
+      {result.sixCode && (
+        <div className="bg-gradient-to-r from-rose-50 to-orange-50 border border-rose-200/80 rounded-2xl p-4 sm:p-5">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <span className="text-[11px] font-bold uppercase tracking-wider text-rose-700 bg-rose-100/70 px-2 py-0.5 rounded-full">
+                6-Digit Quick Code
+              </span>
+              <p className="text-xs text-slate-600 mt-1">
+                Tell the receiver to enter this code on QuickShare to download instantly:
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="font-mono text-2xl sm:text-3xl font-black text-rose-600 tracking-wider bg-white px-4 py-1.5 rounded-xl border border-rose-200 shadow-xs">
+                {formattedSixCode}
+              </span>
+              <button
+                onClick={handleCopyCode}
+                className="px-3 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-medium flex items-center gap-1.5 transition-colors shadow-xs"
+                title="Copy 6-digit code"
+              >
+                {copiedCode ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                <span>{copiedCode ? 'Copied' : 'Copy'}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Direct Recipients Badge */}
+      {result.recipients && result.recipients.length > 0 && (
+        <div className="p-3 bg-blue-50/80 border border-blue-200/70 rounded-xl flex items-center justify-between">
+          <span className="text-xs text-blue-800 font-medium">
+            Sent to recipients: <strong className="font-semibold">{result.recipients.join(', ')}</strong>
+          </span>
+          <span className="text-[10px] font-bold bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">
+            In-App Inbox Delivered
+          </span>
+        </div>
+      )}
 
       {/* Share Link Box */}
       <div>
@@ -92,6 +185,62 @@ export default function ShareResult({
               <QrCode className="w-5 h-5 text-slate-600" />
             </button>
           </div>
+        </div>
+      </div>
+
+      {/* 1-Click Social Sharing (WhatsApp, Telegram, Email, Share Sheet) */}
+      <div className="pt-1">
+        <label className="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2 flex items-center justify-between">
+          <span>Share directly to</span>
+          <button
+            onClick={handleCopyMessage}
+            className="text-[11px] font-semibold text-rose-600 hover:text-rose-700 flex items-center gap-1 normal-case"
+          >
+            {copiedMessage ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
+            <span>{copiedMessage ? 'Message copied!' : 'Copy text message'}</span>
+          </button>
+        </label>
+
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+          {/* WhatsApp */}
+          <a
+            href={whatsappUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-semibold text-xs shadow-xs transition-colors"
+          >
+            <MessageCircle className="w-4 h-4 fill-white" />
+            <span>WhatsApp</span>
+          </a>
+
+          {/* Telegram */}
+          <a
+            href={telegramUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl bg-sky-500 hover:bg-sky-600 text-white font-semibold text-xs shadow-xs transition-colors"
+          >
+            <Send className="w-4 h-4 fill-white" />
+            <span>Telegram</span>
+          </a>
+
+          {/* Email */}
+          <a
+            href={emailUrl}
+            className="flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl bg-slate-800 hover:bg-slate-900 text-white font-semibold text-xs shadow-xs transition-colors"
+          >
+            <Mail className="w-4 h-4" />
+            <span>Email</span>
+          </a>
+
+          {/* Mobile Native Share Sheet */}
+          <button
+            onClick={handleNativeShare}
+            className="flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700 font-semibold text-xs shadow-xs transition-colors"
+          >
+            <Share2 className="w-4 h-4 text-slate-500" />
+            <span>More Options</span>
+          </button>
         </div>
       </div>
 

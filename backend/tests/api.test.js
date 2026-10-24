@@ -1,3 +1,5 @@
+import fs from 'fs';
+import path from 'path';
 import request from 'supertest';
 import app from '../src/app.js';
 import { getDbPool } from '../src/config/db.js';
@@ -11,6 +13,13 @@ describe('QuickShare API Integration Tests', () => {
     // Close db pool to allow jest to exit cleanly
     const db = getDbPool();
     await db.end();
+
+    const testDbPath = path.resolve(process.cwd(), 'database/quickshare_test.sqlite');
+    if (fs.existsSync(testDbPath)) {
+      try {
+        fs.unlinkSync(testDbPath);
+      } catch {}
+    }
   });
 
   describe('Health Check', () => {

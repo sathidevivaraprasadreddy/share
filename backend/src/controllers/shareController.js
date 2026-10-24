@@ -1,12 +1,15 @@
 import path from 'path';
 import archiver from 'archiver';
 import mime from 'mime-types';
+import bcrypt from 'bcryptjs';
 import { getDbPool } from '../config/db.js';
 import storageService from '../services/storageService.js';
 import {
   generateShareToken,
   generateRevokeToken,
-  sanitizeFilename
+  generateSixDigitCode,
+  sanitizeFilename,
+  calculateFileHash
 } from '../utils/fileSecurity.js';
 
 // Allowed expiration periods in hours
@@ -31,13 +34,35 @@ export async function createShareSession(req, res, next) {
     expiryHours = DEFAULT_EXPIRY_HOURS;
   }
 
+  const { password, maxDownloads, note } = req.body;
+  const maxDl = parseInt(maxDownloads, 10) || 0;
+  const passwordHash = password && password.trim().length > 0 ? await bcrypt.hash(password.trim(), 10) : null;
+
   const expiresAt = new Date(Date.now() + expiryHours * 60 * 60 * 1000);
   const shareToken = generateShareToken();
   const revokeToken = generateRevokeToken();
+  const sixCode = generateSixDigitCode();
 
   let totalSizeBytes = 0;
   for (const f of files) {
     totalSizeBytes += f.size;
+  }
+
+  const userId = req.user ? req.user.id : null;
+
+  // Check quota if user is authenticated
+  if (req.user) {
+    const availableBytes = req.user.storage_quota_bytes - req.user.storage_used_bytes;
+    if (totalSizeBytes > availableBytes) {
+      // Clean up uploaded files
+      for (const f of files) {
+        if (f.filename) await storageService.deleteFile(f.filename);
+      }
+      return res.status(400).json({
+        success: false,
+        error: `Upload exceeds your available storage quota (${(availableBytes / (1024 * 1024)).toFixed(1)} MB remaining).`
+      });
+    }
   }
 
   const db = getDbPool();
@@ -49,30 +74,49 @@ export async function createShareSession(req, res, next) {
     // 1. Insert session record
     const [sessionResult] = await connection.query(
       `INSERT INTO share_sessions 
-       (share_token, revoke_token, total_size_bytes, file_count, expires_at)
-       VALUES (?, ?, ?, ?, ?)`,
-      [shareToken, revokeToken, totalSizeBytes, files.length, expiresAt]
+       (user_id, share_token, revoke_token, six_code, password_hash, max_downloads, total_size_bytes, file_count, note, expires_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        userId,
+        shareToken,
+        revokeToken,
+        sixCode,
+        passwordHash,
+        maxDl,
+        totalSizeBytes,
+        files.length,
+        note ? note.trim() : null,
+        expiresAt
+      ]
     );
 
     const sessionId = sessionResult.insertId;
 
-    // 2. Insert file records
+    // 2. Insert file records with SHA-256 calculation
     for (const f of files) {
       const originalName = f.sanitizedOriginalName || sanitizeFilename(f.originalname);
       const storedName = f.filename;
       const mimeType = f.mimetype || mime.lookup(originalName) || 'application/octet-stream';
 
+      let sha256 = null;
+      try {
+        const fullPath = storageService.resolveSafePath(storedName);
+        sha256 = await calculateFileHash(fullPath);
+      } catch {}
+
       await connection.query(
         `INSERT INTO share_files
-         (session_id, original_name, stored_name, file_path, file_size, mime_type, storage_driver)
-         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+         (session_id, user_id, original_name, stored_name, file_path, file_size, mime_type, sha256_hash, storage_driver)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           sessionId,
+          userId,
           originalName,
           storedName,
-          storedName, // relative safe name
+          storedName,
           f.size,
           mimeType,
+          sha256,
           storageService.driver
         ]
       );
@@ -81,15 +125,32 @@ export async function createShareSession(req, res, next) {
       await storageService.persistUploadedFile(storedName, mimeType);
     }
 
+    // 3. Update user storage and log activity if authenticated
+    if (userId) {
+      await connection.query(
+        `UPDATE users SET storage_used_bytes = storage_used_bytes + ? WHERE id = ?`,
+        [totalSizeBytes, userId]
+      );
+
+      await connection.query(
+        `INSERT INTO activity_logs (user_id, session_id, event_type, details)
+         VALUES (?, ?, 'upload', ?)`,
+        [userId, sessionId, `Uploaded ${files.length} file(s) (${(totalSizeBytes / (1024 * 1024)).toFixed(1)} MB)`]
+      );
+    }
+
     await connection.commit();
 
     return res.status(201).json({
       success: true,
       shareToken,
       revokeToken,
+      sixCode,
       expiresAt: expiresAt.toISOString(),
       fileCount: files.length,
-      totalSizeBytes
+      totalSizeBytes,
+      isPasswordProtected: Boolean(passwordHash),
+      maxDownloads: maxDl
     });
   } catch (err) {
     await connection.rollback();
@@ -117,7 +178,8 @@ export async function getShareSession(req, res, next) {
 
     const db = getDbPool();
     const [sessions] = await db.query(
-      `SELECT id, share_token, total_size_bytes, file_count, expires_at, created_at, is_revoked, download_count
+      `SELECT id, user_id, share_token, six_code, password_hash, max_downloads, 
+              total_size_bytes, file_count, note, expires_at, created_at, is_revoked, download_count
        FROM share_sessions
        WHERE share_token = ?`,
       [token]
@@ -151,30 +213,72 @@ export async function getShareSession(req, res, next) {
       });
     }
 
+    // Check download limit
+    if (session.max_downloads > 0 && session.download_count >= session.max_downloads) {
+      return res.status(410).json({
+        success: false,
+        error: 'This share link has reached its maximum download limit.'
+      });
+    }
+
+    // Check password protection
+    if (session.password_hash) {
+      const providedPassword = req.headers['x-share-password'] || req.query.password;
+      if (!providedPassword) {
+        return res.json({
+          success: true,
+          isPasswordRequired: true,
+          session: {
+            shareToken: session.share_token,
+            sixCode: session.six_code,
+            fileCount: session.file_count,
+            totalSizeBytes: session.total_size_bytes,
+            expiresAt: session.expires_at,
+            note: session.note
+          },
+          files: []
+        });
+      }
+
+      const match = await bcrypt.compare(providedPassword, session.password_hash);
+      if (!match) {
+        return res.status(401).json({
+          success: false,
+          isPasswordRequired: true,
+          error: 'Incorrect password for this share.'
+        });
+      }
+    }
+
     // Get files for this session (never expose internal stored_name or file_path)
     const [files] = await db.query(
-      `SELECT id, original_name, file_size, mime_type, created_at
+      `SELECT id, original_name, file_size, mime_type, sha256_hash, created_at
        FROM share_files
-       WHERE session_id = ?
+       WHERE session_id = ? AND is_deleted = 0
        ORDER BY id ASC`,
       [session.id]
     );
 
     return res.json({
       success: true,
+      isPasswordRequired: false,
       session: {
         shareToken: session.share_token,
+        sixCode: session.six_code,
         totalSizeBytes: session.total_size_bytes,
         fileCount: session.file_count,
         expiresAt: session.expires_at,
         createdAt: session.created_at,
-        downloadCount: session.download_count
+        downloadCount: session.download_count,
+        maxDownloads: session.max_downloads,
+        note: session.note
       },
       files: files.map((f) => ({
         id: f.id,
         name: f.original_name,
         size: f.file_size,
         mimeType: f.mime_type,
+        sha256: f.sha256_hash,
         createdAt: f.created_at
       }))
     });
@@ -193,7 +297,8 @@ export async function downloadSingleFile(req, res, next) {
 
     // 1. Verify session is active and valid
     const [sessions] = await db.query(
-      `SELECT id, expires_at, is_revoked FROM share_sessions WHERE share_token = ?`,
+      `SELECT id, user_id, expires_at, is_revoked, max_downloads, download_count, password_hash 
+       FROM share_sessions WHERE share_token = ?`,
       [token]
     );
 
@@ -209,11 +314,23 @@ export async function downloadSingleFile(req, res, next) {
       return res.status(410).json({ success: false, error: 'Sharing link has expired.' });
     }
 
+    if (session.max_downloads > 0 && session.download_count >= session.max_downloads) {
+      return res.status(410).json({ success: false, error: 'Maximum download limit reached.' });
+    }
+
+    // Check password if set
+    if (session.password_hash) {
+      const providedPassword = req.headers['x-share-password'] || req.query.password;
+      if (!providedPassword || !(await bcrypt.compare(providedPassword, session.password_hash))) {
+        return res.status(401).json({ success: false, error: 'Password required or incorrect.' });
+      }
+    }
+
     // 2. Fetch file record
     const [files] = await db.query(
-      `SELECT id, original_name, stored_name, file_size, mime_type
+      `SELECT id, original_name, stored_name, file_size, mime_type, sha256_hash
        FROM share_files
-       WHERE id = ? AND session_id = ?`,
+       WHERE id = ? AND session_id = ? AND is_deleted = 0`,
       [fileId, session.id]
     );
 
@@ -229,8 +346,29 @@ export async function downloadSingleFile(req, res, next) {
       return res.status(404).json({ success: false, error: 'File data is missing from storage.' });
     }
 
-    // 4. Update download count asynchronously
+    // 4. Update download count and recipient status
     db.query(`UPDATE share_sessions SET download_count = download_count + 1 WHERE id = ?`, [session.id]).catch(() => {});
+
+    if (req.user) {
+      db.query(
+        `UPDATE share_recipients SET is_downloaded = 1, downloaded_at = datetime('now') 
+         WHERE session_id = ? AND recipient_user_id = ?`,
+        [session.id, req.user.id]
+      ).catch(() => {});
+    }
+
+    // Notify owner if authenticated
+    if (session.user_id) {
+      db.query(
+        `INSERT INTO notifications (user_id, title, message, type)
+         VALUES (?, ?, ?, 'file_downloaded')`,
+        [
+          session.user_id,
+          'File Downloaded',
+          `Your file "${file.original_name}" was downloaded.`
+        ]
+      ).catch(() => {});
+    }
 
     // 5. Send file with safe content disposition
     const encodedFilename = encodeURIComponent(file.original_name);
@@ -242,12 +380,26 @@ export async function downloadSingleFile(req, res, next) {
     res.setHeader('Content-Length', file.file_size);
     res.setHeader('X-Content-Type-Options', 'nosniff');
     res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    if (file.sha256_hash) {
+      res.setHeader('X-File-SHA256', file.sha256_hash);
+    }
 
     const readStream = await storageService.getFileStream(file.stored_name);
     readStream.on('error', (streamErr) => {
       console.error('File stream error:', streamErr);
       if (!res.headersSent) {
         res.status(500).json({ success: false, error: 'Failed to stream file.' });
+      }
+    });
+
+    // Auto-purge files immediately if self-destruct limit is reached
+    res.on('finish', async () => {
+      try {
+        if (session.max_downloads > 0 && (session.download_count + 1) >= session.max_downloads) {
+          await storageService.deleteFile(file.stored_name);
+        }
+      } catch (err) {
+        console.error('Auto-purge error:', err.message);
       }
     });
 
@@ -267,7 +419,8 @@ export async function downloadAllFiles(req, res, next) {
 
     // Verify session
     const [sessions] = await db.query(
-      `SELECT id, share_token, expires_at, is_revoked FROM share_sessions WHERE share_token = ?`,
+      `SELECT id, user_id, share_token, expires_at, is_revoked, max_downloads, download_count, password_hash 
+       FROM share_sessions WHERE share_token = ?`,
       [token]
     );
 
@@ -283,11 +436,23 @@ export async function downloadAllFiles(req, res, next) {
       return res.status(410).json({ success: false, error: 'Sharing link has expired.' });
     }
 
+    if (session.max_downloads > 0 && session.download_count >= session.max_downloads) {
+      return res.status(410).json({ success: false, error: 'Maximum download limit reached.' });
+    }
+
+    // Check password if set
+    if (session.password_hash) {
+      const providedPassword = req.headers['x-share-password'] || req.query.password;
+      if (!providedPassword || !(await bcrypt.compare(providedPassword, session.password_hash))) {
+        return res.status(401).json({ success: false, error: 'Password required or incorrect.' });
+      }
+    }
+
     // Fetch all files
     const [files] = await db.query(
       `SELECT id, original_name, stored_name, file_size
        FROM share_files
-       WHERE session_id = ?`,
+       WHERE session_id = ? AND is_deleted = 0`,
       [session.id]
     );
 
@@ -297,6 +462,14 @@ export async function downloadAllFiles(req, res, next) {
 
     // Update download count
     db.query(`UPDATE share_sessions SET download_count = download_count + 1 WHERE id = ?`, [session.id]).catch(() => {});
+
+    if (req.user) {
+      db.query(
+        `UPDATE share_recipients SET is_downloaded = 1, downloaded_at = datetime('now') 
+         WHERE session_id = ? AND recipient_user_id = ?`,
+        [session.id, req.user.id]
+      ).catch(() => {});
+    }
 
     const zipFilename = `QuickShare_${token.substring(0, 8)}.zip`;
 
@@ -317,7 +490,6 @@ export async function downloadAllFiles(req, res, next) {
 
     archive.pipe(res);
 
-    // Keep track of names to prevent duplicate zip entries
     const seenNames = new Map();
 
     for (const f of files) {
@@ -339,6 +511,19 @@ export async function downloadAllFiles(req, res, next) {
       }
     }
 
+    // Auto-purge all files immediately if self-destruct limit is reached
+    res.on('finish', async () => {
+      try {
+        if (session.max_downloads > 0 && (session.download_count + 1) >= session.max_downloads) {
+          for (const f of files) {
+            if (f.stored_name) await storageService.deleteFile(f.stored_name);
+          }
+        }
+      } catch (err) {
+        console.error('Auto-purge error:', err.message);
+      }
+    });
+
     await archive.finalize();
   } catch (err) {
     next(err);
@@ -346,34 +531,56 @@ export async function downloadAllFiles(req, res, next) {
 }
 
 /**
- * Revoke/delete a share session early using the secret revokeToken
+ * Revoke/delete a share session early using the secret revokeToken or by logged-in owner
  */
 export async function revokeShareSession(req, res, next) {
   try {
     const { shareToken, revokeToken } = req.body;
-    if (!shareToken || !revokeToken) {
+    const userId = req.user ? req.user.id : null;
+
+    if (!shareToken) {
       return res.status(400).json({
         success: false,
-        error: 'Both shareToken and revokeToken are required to revoke a session.'
+        error: 'shareToken is required to revoke a session.'
       });
     }
 
     const db = getDbPool();
 
-    // Verify tokens match
+    // Query session
     const [sessions] = await db.query(
-      `SELECT id, is_revoked FROM share_sessions WHERE share_token = ? AND revoke_token = ?`,
-      [shareToken, revokeToken]
+      `SELECT id, user_id, is_revoked, total_size_bytes FROM share_sessions WHERE share_token = ?`,
+      [shareToken]
     );
 
     if (sessions.length === 0) {
-      return res.status(403).json({
+      return res.status(404).json({
         success: false,
-        error: 'Invalid authorization token or session does not exist.'
+        error: 'Session not found.'
       });
     }
 
     const session = sessions[0];
+
+    // Check authorization: Must provide matching revokeToken OR be the logged-in session owner
+    const isOwner = userId && session.user_id === userId;
+    let tokenMatches = false;
+
+    if (revokeToken) {
+      const [tokenCheck] = await db.query(
+        `SELECT id FROM share_sessions WHERE share_token = ? AND revoke_token = ?`,
+        [shareToken, revokeToken]
+      );
+      tokenMatches = tokenCheck.length > 0;
+    }
+
+    if (!tokenMatches && !isOwner) {
+      return res.status(403).json({
+        success: false,
+        error: 'Invalid authorization token. You do not have permission to revoke this session.'
+      });
+    }
+
     if (session.is_revoked) {
       return res.json({
         success: true,
@@ -381,25 +588,36 @@ export async function revokeShareSession(req, res, next) {
       });
     }
 
-    // Get files to delete from storage immediately
+    // Get files to delete from physical storage
     const [files] = await db.query(
-      `SELECT stored_name FROM share_files WHERE session_id = ?`,
+      `SELECT stored_name, file_size FROM share_files WHERE session_id = ?`,
       [session.id]
     );
 
-    // Delete stored files
     const storedNames = files.map((f) => f.stored_name);
     await storageService.deleteFiles(storedNames);
 
-    // Mark as revoked
-    await db.query(
-      `UPDATE share_sessions SET is_revoked = 1 WHERE id = ?`,
-      [session.id]
-    );
+    // Mark as revoked in DB
+    await db.query(`UPDATE share_sessions SET is_revoked = 1 WHERE id = ?`, [session.id]);
+
+    // Update user storage quota if owned
+    if (session.user_id) {
+      await db.query(
+        `UPDATE users SET storage_used_bytes = GREATEST(0, storage_used_bytes - ?) WHERE id = ?`,
+        [session.total_size_bytes, session.user_id]
+      );
+
+      // Audit log entry
+      await db.query(
+        `INSERT INTO activity_logs (user_id, session_id, event_type, details)
+         VALUES (?, ?, 'revoked', 'Session revoked and files purged from storage')`,
+        [session.user_id, session.id]
+      );
+    }
 
     return res.json({
       success: true,
-      message: 'Sharing link has been revoked and files deleted successfully.'
+      message: 'Sharing link has been revoked and files deleted permanently.'
     });
   } catch (err) {
     next(err);

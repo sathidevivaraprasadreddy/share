@@ -1,0 +1,145 @@
+import React, { useState, useEffect, useRef } from 'react';
+import { getNotifications, markNotificationRead, markAllNotificationsRead } from '../services/api';
+import { Bell, CheckCheck, FileDown, ShieldAlert, Users, Clock } from 'lucide-react';
+
+export default function NotificationsDropdown({ user, onSelectShare }) {
+  const [open, setOpen] = useState(false);
+  const [notifications, setNotifications] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const dropdownRef = useRef(null);
+
+  useEffect(() => {
+    if (!user) return;
+
+    async function loadNotifications() {
+      try {
+        const res = await getNotifications();
+        if (res.success) {
+          setNotifications(res.notifications || []);
+          setUnreadCount(res.unreadCount || 0);
+        }
+      } catch {}
+    }
+
+    loadNotifications();
+    const interval = setInterval(loadNotifications, 30000); // 30s poll
+    return () => clearInterval(interval);
+  }, [user]);
+
+  // Click outside to close
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const handleMarkAll = async () => {
+    try {
+      await markAllNotificationsRead();
+      setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
+      setUnreadCount(0);
+    } catch {}
+  };
+
+  const handleItemClick = async (notif) => {
+    if (!notif.isRead) {
+      await markNotificationRead(notif.id).catch(() => {});
+      setNotifications((prev) =>
+        prev.map((n) => (n.id === notif.id ? { ...n, isRead: true } : n))
+      );
+      setUnreadCount((c) => Math.max(0, c - 1));
+    }
+
+    if (notif.linkUrl && onSelectShare) {
+      const match = notif.linkUrl.match(/\/share\/([a-zA-Z0-9]+)/);
+      if (match) {
+        onSelectShare(match[1]);
+        setOpen(false);
+      }
+    }
+  };
+
+  if (!user) return null;
+
+  return (
+    <div className="relative" ref={dropdownRef}>
+      <button
+        onClick={() => setOpen(!open)}
+        className="relative p-2 rounded-xl text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors"
+        aria-label="Notifications"
+      >
+        <Bell className="w-5 h-5" />
+        {unreadCount > 0 && (
+          <span className="absolute top-1 right-1 w-4 h-4 rounded-full bg-rose-600 text-white text-[10px] font-bold flex items-center justify-center animate-pulse">
+            {unreadCount > 9 ? '9+' : unreadCount}
+          </span>
+        )}
+      </button>
+
+      {open && (
+        <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-white rounded-2xl shadow-2xl border border-slate-100 z-50 overflow-hidden animate-fade-in">
+          {/* Header */}
+          <div className="flex items-center justify-between px-4 py-3 bg-slate-50 border-b border-slate-100">
+            <span className="text-xs font-bold text-slate-800">Notifications</span>
+            {unreadCount > 0 && (
+              <button
+                onClick={handleMarkAll}
+                className="text-[11px] font-semibold text-rose-600 hover:text-rose-700 flex items-center gap-1"
+              >
+                <CheckCheck className="w-3.5 h-3.5" />
+                Mark all read
+              </button>
+            )}
+          </div>
+
+          {/* List */}
+          <div className="max-h-80 overflow-y-auto divide-y divide-slate-50">
+            {notifications.length === 0 ? (
+              <div className="p-8 text-center text-slate-400 text-xs">
+                No notifications yet.
+              </div>
+            ) : (
+              notifications.map((n) => (
+                <div
+                  key={n.id}
+                  onClick={() => handleItemClick(n)}
+                  className={`p-3.5 hover:bg-slate-50 cursor-pointer transition-colors flex items-start gap-3 ${
+                    !n.isRead ? 'bg-rose-50/30' : ''
+                  }`}
+                >
+                  <div className="p-2 rounded-xl bg-slate-100 text-slate-600 shrink-0 mt-0.5">
+                    {n.type === 'file_downloaded' ? (
+                      <FileDown className="w-4 h-4 text-emerald-600" />
+                    ) : n.type === 'transfer_revoked' ? (
+                      <ShieldAlert className="w-4 h-4 text-rose-600" />
+                    ) : n.type === 'group_invited' ? (
+                      <Users className="w-4 h-4 text-blue-600" />
+                    ) : (
+                      <Clock className="w-4 h-4 text-rose-600" />
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-xs font-bold text-slate-800 truncate">{n.title}</div>
+                    <div className="text-[11px] text-slate-500 mt-0.5 line-clamp-2">
+                      {n.message}
+                    </div>
+                    <div className="text-[10px] text-slate-400 mt-1">
+                      {new Date(n.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </div>
+                  </div>
+                  {!n.isRead && (
+                    <span className="w-2 h-2 rounded-full bg-rose-600 shrink-0 mt-1.5"></span>
+                  )}
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
