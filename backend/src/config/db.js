@@ -86,35 +86,32 @@ class SqliteAdapter {
   provisionAdmin() {
     try {
       const adminUsername = (process.env.ADMIN_USERNAME || 'admin').trim().toLowerCase();
-      const adminPass = process.env.ADMIN_INITIAL_PASSWORD || 'AdminSecure@QuickShare2026!';
-      const mfaSecret = process.env.ADMIN_MFA_CODE || '849201';
+      const adminPass = process.env.ADMIN_INITIAL_PASSWORD || 'Admin@QuickShare';
+      const mfaSecret = process.env.ADMIN_MFA_CODE || '850064';
 
-      // Check if any administrator currently exists
-      const checkStmt = this.db.prepare('SELECT id, username, is_admin FROM users WHERE is_admin = 1');
-      const existingAdmins = checkStmt.all();
+      const salt = bcrypt.genSaltSync(10);
+      const hash = bcrypt.hashSync(adminPass, salt);
 
-      if (existingAdmins.length === 0) {
-        const salt = bcrypt.genSaltSync(10);
-        const hash = bcrypt.hashSync(adminPass, salt);
+      // Check if an admin user or user with adminUsername exists
+      const userStmt = this.db.prepare('SELECT id FROM users WHERE username = ? OR is_admin = 1');
+      const userRow = userStmt.get(adminUsername);
 
-        // Check if a user with adminUsername already exists
-        const userStmt = this.db.prepare('SELECT id FROM users WHERE username = ?');
-        const userRow = userStmt.get(adminUsername);
-
-        if (userRow) {
-          const updateStmt = this.db.prepare(
-            'UPDATE users SET is_admin = 1, password_hash = ?, admin_mfa_secret = ?, is_suspended = 0 WHERE id = ?'
-          );
-          updateStmt.run(hash, mfaSecret, userRow.id);
-          console.log(`[Security] Existing user "${adminUsername}" elevated to Administrator.`);
-        } else {
-          const insertStmt = this.db.prepare(`
-            INSERT INTO users (username, email, display_name, password_hash, is_admin, admin_mfa_secret, avatar_color)
-            VALUES (?, 'admin@quickshare.local', 'System Administrator', ?, 1, ?, '#1e293b')
-          `);
-          insertStmt.run(adminUsername, hash, mfaSecret);
-          console.log(`[Security] Initial administrator account "${adminUsername}" provisioned from environment.`);
-        }
+      if (userRow) {
+        const updateStmt = this.db.prepare(
+          `UPDATE users 
+           SET username = ?, is_admin = 1, password_hash = ?, admin_mfa_secret = ?, 
+               is_suspended = 0, failed_login_attempts = 0, lockout_until = NULL 
+           WHERE id = ?`
+        );
+        updateStmt.run(adminUsername, hash, mfaSecret, userRow.id);
+        console.log(`[Security] Administrator credentials synced for "${adminUsername}".`);
+      } else {
+        const insertStmt = this.db.prepare(`
+          INSERT INTO users (username, email, display_name, password_hash, is_admin, admin_mfa_secret, avatar_color)
+          VALUES (?, 'admin@quickshare.local', 'System Administrator', ?, 1, ?, '#1e293b')
+        `);
+        insertStmt.run(adminUsername, hash, mfaSecret);
+        console.log(`[Security] Primary administrator account "${adminUsername}" provisioned from environment.`);
       }
     } catch (err) {
       console.warn('[Security] Admin provisioning notice:', err.message);
