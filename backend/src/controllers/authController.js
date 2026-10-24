@@ -636,6 +636,12 @@ export async function loginWithGoogle(req, res, next) {
             error: 'Google account email is not verified.'
           });
         }
+        if (process.env.GOOGLE_CLIENT_ID && payload.aud && payload.aud !== process.env.GOOGLE_CLIENT_ID) {
+          return res.status(401).json({
+            success: false,
+            error: 'Google token audience mismatch: token was not issued for this application.'
+          });
+        }
         cleanEmail = payload.email.trim().toLowerCase();
         cleanGoogleId = String(payload.sub).trim();
         displayName = (payload.name && payload.name.trim()) || cleanEmail.split('@')[0];
