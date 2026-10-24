@@ -285,11 +285,31 @@ export async function leaveGroup(id) {
   return response.data;
 }
 
+export async function getGroupByInvite(code) {
+  const response = await api.get(`/groups/invite/${encodeURIComponent(code)}`);
+  return response.data;
+}
+
+export async function joinGroupByInvite(code) {
+  const response = await api.post('/groups/join-invite', { inviteCode: code });
+  return response.data;
+}
+
 // ========================================================
 // 9. Activity & Notifications
 // ========================================================
 export async function getActivityTimeline() {
   const response = await api.get('/activity');
+  return response.data;
+}
+
+export async function deleteActivityLog(id) {
+  const response = await api.delete(`/activity/${id}`);
+  return response.data;
+}
+
+export async function clearAllActivityLogs() {
+  const response = await api.delete('/activity');
   return response.data;
 }
 
@@ -305,6 +325,16 @@ export async function markNotificationRead(id) {
 
 export async function markAllNotificationsRead() {
   const response = await api.post('/notifications/read-all');
+  return response.data;
+}
+
+export async function deleteNotification(id) {
+  const response = await api.delete(`/notifications/${id}`);
+  return response.data;
+}
+
+export async function clearAllNotifications() {
+  const response = await api.delete('/notifications');
   return response.data;
 }
 
@@ -355,10 +385,16 @@ export default {
   shareWithGroup,
   deleteGroup,
   leaveGroup,
+  getGroupByInvite,
+  joinGroupByInvite,
   getActivityTimeline,
+  deleteActivityLog,
+  clearAllActivityLogs,
   getNotifications,
   markNotificationRead,
   markAllNotificationsRead,
+  deleteNotification,
+  clearAllNotifications,
   getSingleFileDownloadUrl,
   getZipDownloadUrl
 };

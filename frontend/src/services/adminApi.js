@@ -70,6 +70,11 @@ export async function revokeUserSessions(userId) {
   return res.data;
 }
 
+export async function changeUserPasswordAsAdmin(userId, newPassword) {
+  const res = await adminClient.post(`/users/${userId}/change-password`, { newPassword });
+  return res.data;
+}
+
 export async function getAdminSessions() {
   const res = await adminClient.get('/sessions');
   return res.data;
@@ -80,13 +85,59 @@ export async function revokeSessionAsAdmin(shareToken) {
   return res.data;
 }
 
+export async function downloadSessionAsAdmin(shareToken, sessionCode) {
+  const token = sessionStorage.getItem('quickshare_admin_token');
+  const res = await axios.get(`${API_BASE}/sessions/${shareToken}/download`, {
+    headers: { Authorization: `Bearer ${token}` },
+    responseType: 'blob'
+  });
+
+  // Extract filename if Content-Disposition exists
+  let filename = `QuickShare_Admin_${sessionCode || shareToken.slice(0, 8)}.zip`;
+  const disposition = res.headers['content-disposition'];
+  if (disposition && disposition.indexOf('filename=') !== -1) {
+    const match = disposition.match(/filename="?([^";]+)"?/);
+    if (match && match[1]) filename = match[1];
+  }
+
+  const blob = new Blob([res.data], { type: res.headers['content-type'] || 'application/octet-stream' });
+  const url = window.URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  window.URL.revokeObjectURL(url);
+}
+
 export async function getAdminLogins() {
   const res = await adminClient.get('/logins');
   return res.data;
 }
 
+export async function deleteLoginLog(id) {
+  const res = await adminClient.delete(`/logins/${id}`);
+  return res.data;
+}
+
+export async function clearLoginLogs() {
+  const res = await adminClient.delete('/logins');
+  return res.data;
+}
+
 export async function getAdminAuditLogs() {
   const res = await adminClient.get('/audit-logs');
+  return res.data;
+}
+
+export async function deleteAuditLog(id) {
+  const res = await adminClient.delete(`/audit-logs/${id}`);
+  return res.data;
+}
+
+export async function clearAuditLogs() {
+  const res = await adminClient.delete('/audit-logs');
   return res.data;
 }
 

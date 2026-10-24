@@ -1,5 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { getActivityTimeline } from '../services/api';
+import {
+  getActivityTimeline,
+  deleteActivityLog,
+  clearAllActivityLogs
+} from '../services/api';
 import {
   Activity,
   Upload,
@@ -31,6 +35,21 @@ export default function ActivityView({ user, onRequireAuth }) {
     }
     loadLogs();
   }, [user]);
+
+  const handleDeleteLog = async (id) => {
+    try {
+      await deleteActivityLog(id);
+      setLogs((prev) => prev.filter((l) => l.id !== id));
+    } catch {}
+  };
+
+  const handleClearLogs = async () => {
+    if (!window.confirm('Are you sure you want to clear your transfer activity history?')) return;
+    try {
+      await clearAllActivityLogs();
+      setLogs([]);
+    } catch {}
+  };
 
   if (!user) {
     return (
@@ -72,14 +91,25 @@ export default function ActivityView({ user, onRequireAuth }) {
 
   return (
     <div className="max-w-4xl w-full mx-auto space-y-6 animate-fade-in">
-      <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
-        <h1 className="text-xl font-bold text-slate-900 flex items-center gap-2">
-          <Activity className="w-5 h-5 text-rose-600" />
-          Transfer Activity & Audit Log
-        </h1>
-        <p className="text-xs text-slate-500 mt-0.5">
-          Comprehensive event timeline of uploads, transfers, recipient downloads, and revocations.
-        </p>
+      <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-xl font-bold text-slate-900 flex items-center gap-2">
+            <Activity className="w-5 h-5 text-rose-600" />
+            Transfer Activity & Audit Log
+          </h1>
+          <p className="text-xs text-slate-500 mt-0.5">
+            Comprehensive event timeline of uploads, transfers, recipient downloads, and revocations.
+          </p>
+        </div>
+        {logs.length > 0 && (
+          <button
+            onClick={handleClearLogs}
+            className="self-start sm:self-auto px-3.5 py-1.5 text-xs font-semibold text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 rounded-xl transition-colors flex items-center gap-1.5"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+            Clear Activity History
+          </button>
+        )}
       </div>
 
       {loading ? (
@@ -98,12 +128,12 @@ export default function ActivityView({ user, onRequireAuth }) {
         <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100">
           <div className="relative pl-6 space-y-6 before:absolute before:left-2.5 before:top-2 before:bottom-2 before:w-0.5 before:bg-slate-100">
             {logs.map((log) => (
-              <div key={log.id} className="relative flex items-start gap-3">
+              <div key={log.id} className="relative flex items-start gap-3 group">
                 <div className="absolute -left-6 mt-1 w-5 h-5 rounded-full bg-white border-2 border-slate-200 flex items-center justify-center">
                   <div className="w-2 h-2 rounded-full bg-rose-600"></div>
                 </div>
 
-                <div className="flex-1 bg-slate-50 p-3.5 rounded-2xl border border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div className="flex-1 bg-slate-50 p-3.5 rounded-2xl border border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-2 hover:bg-slate-100/60 transition-colors">
                   <div className="flex items-center gap-2.5">
                     <div className="p-1.5 rounded-xl bg-white shadow-sm shrink-0">
                       {getEventIcon(log.eventType)}
@@ -118,14 +148,23 @@ export default function ActivityView({ user, onRequireAuth }) {
                     </div>
                   </div>
 
-                  <div className="text-[11px] text-slate-400 shrink-0 font-mono flex items-center gap-1 self-end sm:self-auto">
-                    <Clock className="w-3 h-3" />
-                    {new Date(log.createdAt).toLocaleString([], {
-                      month: 'short',
-                      day: 'numeric',
-                      hour: '2-digit',
-                      minute: '2-digit'
-                    })}
+                  <div className="flex items-center gap-3 self-end sm:self-auto">
+                    <div className="text-[11px] text-slate-400 font-mono flex items-center gap-1">
+                      <Clock className="w-3 h-3" />
+                      {new Date(log.createdAt).toLocaleString([], {
+                        month: 'short',
+                        day: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })}
+                    </div>
+                    <button
+                      onClick={() => handleDeleteLog(log.id)}
+                      className="opacity-0 group-hover:opacity-100 p-1 text-slate-400 hover:text-rose-600 hover:bg-white rounded-lg transition-all"
+                      title="Delete activity entry"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
                   </div>
                 </div>
               </div>

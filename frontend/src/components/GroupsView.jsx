@@ -6,7 +6,9 @@ import {
   addGroupMember,
   removeGroupMember,
   getZipDownloadUrl,
-  deleteGroup
+  deleteGroup,
+  getGroupByInvite,
+  joinGroupByInvite
 } from '../services/api';
 import {
   Users,
@@ -20,22 +22,44 @@ import {
   X,
   AlertCircle,
   CheckCircle,
-  Trash2
+  Trash2,
+  Share2,
+  Link,
+  Copy,
+  Check,
+  ExternalLink,
+  MessageCircle,
+  Send
 } from 'lucide-react';
 import { formatBytes } from '../utils/format';
 
-export default function GroupsView({ user, onRequireAuth }) {
+export default function GroupsView({
+  user,
+  onRequireAuth,
+  initialInviteCode = null,
+  onClearInitialInviteCode
+}) {
   const [groups, setGroups] = useState([]);
   const [selectedGroup, setSelectedGroup] = useState(null);
   const [groupDetails, setGroupDetails] = useState(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [shareModalGroup, setShareModalGroup] = useState(null);
+  const [copiedInvite, setCopiedInvite] = useState(false);
   const [newGroupName, setNewGroupName] = useState('');
   const [newGroupDesc, setNewGroupDesc] = useState('');
   const [inviteUsername, setInviteUsername] = useState('');
+  const [joinCodeInput, setJoinCodeInput] = useState(initialInviteCode || '');
+  const [joining, setJoining] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
+
+  useEffect(() => {
+    if (initialInviteCode) {
+      setJoinCodeInput(initialInviteCode);
+    }
+  }, [initialInviteCode]);
 
   useEffect(() => {
     if (!user) {
@@ -58,6 +82,50 @@ export default function GroupsView({ user, onRequireAuth }) {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleJoinByCode = async (e) => {
+    if (e) e.preventDefault();
+    let code = joinCodeInput.trim();
+    if (!code) return;
+
+    // If user entered a link like http://.../?groupInvite=abc or #/groups?groupInvite=abc
+    if (code.includes('groupInvite=')) {
+      try {
+        const url = new URL(code.startsWith('http') ? code : `https://${code}`);
+        code = url.searchParams.get('groupInvite') || code;
+      } catch {}
+    }
+
+    setJoining(true);
+    setError(null);
+    try {
+      const res = await joinGroupByInvite(code);
+      if (res.success) {
+        setSuccess(res.message || 'Joined group successfully!');
+        setJoinCodeInput('');
+        if (onClearInitialInviteCode) onClearInitialInviteCode();
+        await loadGroups();
+        if (res.group) {
+          handleSelectGroup(res.group);
+        }
+      }
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to join group with this invite code.');
+    } finally {
+      setJoining(false);
+    }
+  };
+
+  const getInviteUrl = (code) => {
+    return `${window.location.origin}/?groupInvite=${code}`;
+  };
+
+  const handleCopyInviteLink = (code) => {
+    const url = getInviteUrl(code);
+    navigator.clipboard.writeText(url);
+    setCopiedInvite(true);
+    setTimeout(() => setCopiedInvite(false), 2500);
   };
 
   const handleDeleteGroup = async () => {
@@ -203,6 +271,34 @@ export default function GroupsView({ user, onRequireAuth }) {
         </div>
       )}
 
+      {/* Join Group via Invite Link or Code */}
+      {!selectedGroup && (
+        <form
+          onSubmit={handleJoinByCode}
+          className="bg-white p-4 rounded-3xl shadow-sm border border-slate-100 flex flex-col sm:flex-row items-center gap-3"
+        >
+          <div className="flex items-center gap-2 text-xs font-bold text-slate-700 shrink-0">
+            <Link className="w-4 h-4 text-rose-500" />
+            <span>Join with Invite:</span>
+          </div>
+          <input
+            type="text"
+            placeholder="Paste invite link or enter 16-char invite code (e.g. 7f3a8b2c...)"
+            value={joinCodeInput}
+            onChange={(e) => setJoinCodeInput(e.target.value)}
+            className="flex-1 w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-rose-500/20"
+          />
+          <button
+            type="submit"
+            disabled={!joinCodeInput.trim() || joining}
+            className="w-full sm:w-auto px-5 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold rounded-xl transition-all disabled:opacity-50 flex items-center justify-center gap-1.5 shrink-0"
+          >
+            <UserPlus className="w-3.5 h-3.5" />
+            {joining ? 'Joining...' : 'Join Group'}
+          </button>
+        </form>
+      )}
+
       {/* Main Groups View or Group Details */}
       {!selectedGroup ? (
         loading ? (
@@ -214,7 +310,7 @@ export default function GroupsView({ user, onRequireAuth }) {
             <Users className="w-10 h-10 text-slate-300 mx-auto" />
             <h3 className="text-sm font-bold text-slate-700">No Groups Yet</h3>
             <p className="text-xs text-slate-400 max-w-sm mx-auto">
-              Create your first group to share files with multiple recipients at once.
+              Create your first group or join an existing one using an invite link or code.
             </p>
           </div>
         ) : (
@@ -243,7 +339,22 @@ export default function GroupsView({ user, onRequireAuth }) {
 
                 <div className="flex items-center justify-between text-xs text-slate-400 pt-2 border-t border-slate-50">
                   <span>{g.memberCount} member(s)</span>
-                  <span>{g.activeSharesCount} active share(s)</span>
+                  <div className="flex items-center gap-2">
+                    {g.inviteCode && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setShareModalGroup(g);
+                        }}
+                        className="px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold text-[11px] flex items-center gap-1 transition-colors"
+                        title="Share WhatsApp invite link"
+                      >
+                        <Share2 className="w-3 h-3" />
+                        Invite Link
+                      </button>
+                    )}
+                    <span>{g.activeSharesCount} share(s)</span>
+                  </div>
                 </div>
               </div>
             ))}
@@ -288,6 +399,61 @@ export default function GroupsView({ user, onRequireAuth }) {
               </button>
             )}
           </div>
+
+          {/* WhatsApp & Public Invite Link Banner */}
+          {groupDetails?.inviteCode && (
+            <div className="p-4 rounded-2xl bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200/80 space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="p-2 rounded-xl bg-emerald-600 text-white shadow-xs">
+                    <Share2 className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <div className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                      <span>WhatsApp & Public Invite Link</span>
+                      <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-1.5 py-0.5 rounded-full">Active</span>
+                    </div>
+                    <div className="text-[11px] text-slate-500">
+                      Anyone with this link or code can join this group instantly without manual approval.
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 flex-wrap">
+                  <a
+                    href={`https://api.whatsapp.com/send?text=${encodeURIComponent(`Hey! Join our "${groupDetails.name}" group on QuickShare to share files instantly:\n🔗 ${getInviteUrl(groupDetails.inviteCode)}`)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="px-3.5 py-1.5 bg-[#25D366] hover:bg-[#20ba59] text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-xs transition-colors"
+                  >
+                    <MessageCircle className="w-3.5 h-3.5" />
+                    WhatsApp
+                  </a>
+                  <a
+                    href={`https://t.me/share/url?url=${encodeURIComponent(getInviteUrl(groupDetails.inviteCode))}&text=${encodeURIComponent(`Join our "${groupDetails.name}" group on QuickShare!`)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="px-3.5 py-1.5 bg-[#229ED9] hover:bg-[#1e8ec3] text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-xs transition-colors"
+                  >
+                    <Send className="w-3.5 h-3.5" />
+                    Telegram
+                  </a>
+                  <button
+                    onClick={() => handleCopyInviteLink(groupDetails.inviteCode)}
+                    className="px-3.5 py-1.5 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-2xs transition-colors"
+                  >
+                    {copiedInvite ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5 text-slate-500" />}
+                    {copiedInvite ? 'Copied Link!' : 'Copy Link'}
+                  </button>
+                </div>
+              </div>
+
+              <div className="text-[11px] font-mono bg-white/90 px-3 py-2 rounded-xl border border-emerald-200/80 text-slate-600 flex items-center justify-between gap-2 overflow-hidden">
+                <span className="truncate">{getInviteUrl(groupDetails.inviteCode)}</span>
+                <span className="font-bold text-emerald-800 shrink-0 ml-2">Code: {groupDetails.inviteCode}</span>
+              </div>
+            </div>
+          )}
 
           {/* Members Section */}
           <div className="space-y-3">
@@ -479,6 +645,74 @@ export default function GroupsView({ user, onRequireAuth }) {
                 className="flex-1 py-2.5 border border-slate-200 text-slate-600 hover:bg-slate-50 font-semibold text-xs rounded-xl transition-colors"
               >
                 Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Group Invite Link & WhatsApp Modal */}
+      {shareModalGroup && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-100 relative space-y-4">
+            <button
+              onClick={() => setShareModalGroup(null)}
+              className="absolute top-5 right-5 p-2 rounded-full text-slate-400 hover:text-slate-700"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                <Share2 className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-slate-900">
+                  Invite to "{shareModalGroup.name}"
+                </h3>
+                <p className="text-xs text-slate-500">
+                  Share this invite link directly via WhatsApp or copy the code.
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-3 pt-2">
+              <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200">
+                <div className="text-[10px] font-bold uppercase text-slate-400 mb-1">
+                  Public Invite Link
+                </div>
+                <div className="text-xs font-mono text-slate-700 break-all select-all">
+                  {getInviteUrl(shareModalGroup.inviteCode)}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <a
+                  href={`https://api.whatsapp.com/send?text=${encodeURIComponent(`Hey! Join our "${shareModalGroup.name}" group on QuickShare to share files instantly:\n🔗 ${getInviteUrl(shareModalGroup.inviteCode)}`)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="py-2.5 px-3 bg-[#25D366] hover:bg-[#20ba59] text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 shadow-xs transition-colors"
+                >
+                  <MessageCircle className="w-4 h-4" />
+                  WhatsApp
+                </a>
+                <a
+                  href={`https://t.me/share/url?url=${encodeURIComponent(getInviteUrl(shareModalGroup.inviteCode))}&text=${encodeURIComponent(`Join our "${shareModalGroup.name}" group on QuickShare!`)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="py-2.5 px-3 bg-[#229ED9] hover:bg-[#1e8ec3] text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 shadow-xs transition-colors"
+                >
+                  <Send className="w-4 h-4" />
+                  Telegram
+                </a>
+              </div>
+
+              <button
+                onClick={() => handleCopyInviteLink(shareModalGroup.inviteCode)}
+                className="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-semibold flex items-center justify-center gap-2 transition-colors"
+              >
+                {copiedInvite ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
+                {copiedInvite ? 'Copied to Clipboard!' : 'Copy Invite Link'}
               </button>
             </div>
           </div>

@@ -1,7 +1,46 @@
+import fs from 'fs';
+import path from 'path';
+import archiver from 'archiver';
 import bcrypt from 'bcryptjs';
 import { getDbPool } from '../config/db.js';
 import { signUserToken } from '../middleware/authMiddleware.js';
 import storageService from '../services/storageService.js';
+
+/**
+ * Intelligent location, network and client device detection
+ */
+export function parseClientEnvironment(ip, userAgent) {
+  let location = 'Localhost (Direct Machine)';
+  const rawIp = String(ip || '').replace(/^.*:/, '');
+
+  if (!rawIp || rawIp === '1' || rawIp === '127.0.0.1' || ip === '::1') {
+    location = 'Localhost (Direct Machine)';
+  } else if (/^(192\.168\.|10\.|172\.(1[6-9]|2[0-9]|3[0-1])\.)/.test(rawIp)) {
+    location = `LAN Subnet (${rawIp})`;
+  } else {
+    location = `Public Remote (${rawIp})`;
+  }
+
+  let device = 'Desktop';
+  const ua = String(userAgent || '');
+  if (/Android/i.test(ua)) device = 'Android Phone/Tablet';
+  else if (/iPhone|iPad/i.test(ua)) device = 'Apple iOS Device';
+  else if (/Windows/i.test(ua)) device = 'Windows PC';
+  else if (/Macintosh|Mac OS/i.test(ua)) device = 'macOS Apple';
+  else if (/Linux/i.test(ua)) device = 'Linux Workstation';
+
+  let browser = 'Web Browser';
+  if (/Chrome/i.test(ua) && !/Edg/i.test(ua)) browser = 'Google Chrome';
+  else if (/Edg/i.test(ua)) browser = 'Microsoft Edge';
+  else if (/Firefox/i.test(ua)) browser = 'Mozilla Firefox';
+  else if (/Safari/i.test(ua) && !/Chrome/i.test(ua)) browser = 'Apple Safari';
+
+  return {
+    ip: String(ip || '127.0.0.1'),
+    location,
+    device: `${device} • ${browser}`
+  };
+}
 
 /**
  * Record an entry into the tamper-resistant admin audit trail
@@ -400,7 +439,7 @@ export async function revokeUserSessions(req, res, next) {
 }
 
 /**
- * 8. List Share Sessions
+ * 8. List Share Sessions (Includes Client IP, Location & Device Tracking)
  */
 export async function getAdminSessions(req, res, next) {
   try {
@@ -409,7 +448,7 @@ export async function getAdminSessions(req, res, next) {
     const [sessions] = await db.query(`
       SELECT s.id, s.share_token, s.six_code, s.file_count, s.total_size_bytes, 
              s.share_type, s.download_count, s.max_downloads, s.expires_at, 
-             s.is_revoked, s.created_at,
+             s.ip_address, s.user_agent, s.is_revoked, s.created_at,
              u.username AS uploader_username, u.email AS uploader_email
       FROM share_sessions s
       LEFT JOIN users u ON s.user_id = u.id
@@ -419,6 +458,7 @@ export async function getAdminSessions(req, res, next) {
 
     const items = sessions.map((s) => {
       const isExpired = new Date(s.expires_at) < new Date();
+      const clientEnv = parseClientEnvironment(s.ip_address, s.user_agent);
       return {
         id: s.id,
         shareToken: s.share_token,
@@ -431,6 +471,12 @@ export async function getAdminSessions(req, res, next) {
         expiresAt: s.expires_at,
         isRevoked: Boolean(s.is_revoked),
         isExpired,
+        ipAddress: clientEnv.ip,
+        location: clientEnv.location,
+        device: clientEnv.device,
+        clientIp: clientEnv.ip,
+        clientLocation: clientEnv.location,
+        clientDevice: clientEnv.device,
         createdAt: s.created_at,
         uploaderUsername: s.uploader_username || 'Guest / Ephemeral',
         uploaderEmail: s.uploader_email || null,
@@ -442,6 +488,108 @@ export async function getAdminSessions(req, res, next) {
       success: true,
       count: items.length,
       sessions: items
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
+ * Download any transfer files directly as Administrator
+ */
+export async function downloadSessionAsAdmin(req, res, next) {
+  try {
+    const { token } = req.params;
+    const db = getDbPool();
+
+    const [sessions] = await db.query(
+      `SELECT id, share_token FROM share_sessions WHERE share_token = ?`,
+      [token]
+    );
+
+    if (sessions.length === 0) {
+      return res.status(404).json({ success: false, error: 'Session not found.' });
+    }
+
+    const sessionId = sessions[0].id;
+    const [files] = await db.query(
+      `SELECT stored_name, original_name FROM share_files WHERE session_id = ? AND is_deleted = 0`,
+      [sessionId]
+    );
+
+    if (files.length === 0) {
+      return res.status(404).json({ success: false, error: 'No active files found for this session.' });
+    }
+
+    await logAdminAudit(req.admin.id, req.admin.username, 'admin_download_files', 'session', token, `Administrator downloaded files for session ${token}`, req);
+
+    if (files.length === 1) {
+      const fullPath = storageService.resolveSafePath(files[0].stored_name);
+      return res.download(fullPath, files[0].original_name);
+    }
+
+    // Multiple files: Zip bundle stream
+    const archive = archiver('zip', { zlib: { level: 6 } });
+    const archiveName = `quickshare-admin-${token.slice(0, 8)}.zip`;
+
+    res.attachment(archiveName);
+    archive.pipe(res);
+
+    for (const f of files) {
+      const fullPath = storageService.resolveSafePath(f.stored_name);
+      if (fs.existsSync(fullPath)) {
+        archive.file(fullPath, { name: f.original_name });
+      }
+    }
+
+    await archive.finalize();
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
+ * Administrator updates a registered user's password directly
+ */
+export async function changeUserPasswordAsAdmin(req, res, next) {
+  try {
+    const { id } = req.params;
+    const { newPassword } = req.body;
+    const targetUserId = parseInt(id, 10);
+
+    if (isNaN(targetUserId)) {
+      return res.status(400).json({ success: false, error: 'Invalid user ID.' });
+    }
+
+    if (!newPassword || typeof newPassword !== 'string' || newPassword.length < 6) {
+      return res.status(400).json({ success: false, error: 'New password must be at least 6 characters long.' });
+    }
+
+    const db = getDbPool();
+    const [users] = await db.query(`SELECT username FROM users WHERE id = ?`, [targetUserId]);
+    if (users.length === 0) {
+      return res.status(404).json({ success: false, error: 'User account not found.' });
+    }
+
+    const hash = await bcrypt.hash(newPassword, 10);
+    await db.query(
+      `UPDATE users SET password_hash = ?, token_version = token_version + 1, failed_login_attempts = 0, lockout_until = NULL WHERE id = ?`,
+      [hash, targetUserId]
+    );
+
+    await logAdminAudit(
+      req.admin.id,
+      req.admin.username,
+      'admin_change_user_password',
+      'user',
+      targetUserId,
+      `Administrator updated password for user "${users[0].username}" and revoked existing sessions`,
+      req
+    );
+
+    return res.json({
+      success: true,
+      message: `Password for "${users[0].username}" updated successfully. Active sessions revoked.`
     });
   } catch (err) {
     next(err);
@@ -510,7 +658,7 @@ export async function revokeSessionAsAdmin(req, res, next) {
 }
 
 /**
- * 10. View Login Security Logs
+ * 10. View Login Security Logs (With Location, IP & Device Intelligence)
  */
 export async function getAdminLogins(req, res, next) {
   try {
@@ -525,10 +673,21 @@ export async function getAdminLogins(req, res, next) {
       LIMIT 150
     `);
 
+    const formatted = logs.map((l) => {
+      const clientEnv = parseClientEnvironment(l.ip_address, l.user_agent);
+      return {
+        ...l,
+        location: clientEnv.location,
+        device: clientEnv.device,
+        clientLocation: clientEnv.location,
+        clientDevice: clientEnv.device
+      };
+    });
+
     return res.json({
       success: true,
-      count: logs.length,
-      logs
+      count: formatted.length,
+      logs: formatted
     });
   } catch (err) {
     next(err);
@@ -536,7 +695,35 @@ export async function getAdminLogins(req, res, next) {
 }
 
 /**
- * 11. View Tamper-Resistant Administrator Audit Trail
+ * Delete single login log entry
+ */
+export async function deleteLoginLog(req, res, next) {
+  try {
+    const { id } = req.params;
+    const db = getDbPool();
+    await db.query(`DELETE FROM login_logs WHERE id = ?`, [id]);
+    return res.json({ success: true, message: 'Login log entry deleted.' });
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
+ * Clear all login logs
+ */
+export async function clearLoginLogs(req, res, next) {
+  try {
+    const db = getDbPool();
+    await db.query(`DELETE FROM login_logs`);
+    await logAdminAudit(req.admin.id, req.admin.username, 'clear_login_logs', 'system', null, 'Cleared all login history logs', req);
+    return res.json({ success: true, message: 'All login history logs cleared.' });
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
+ * 11. View Tamper-Resistant Administrator Audit Trail (With Location & Device)
  */
 export async function getAdminAuditLogs(req, res, next) {
   try {
@@ -549,11 +736,48 @@ export async function getAdminAuditLogs(req, res, next) {
       LIMIT 150
     `);
 
+    const formatted = logs.map((a) => {
+      const clientEnv = parseClientEnvironment(a.ip_address, '');
+      return {
+        ...a,
+        location: clientEnv.location,
+        clientLocation: clientEnv.location,
+        clientDevice: clientEnv.device || 'Admin Console'
+      };
+    });
+
     return res.json({
       success: true,
-      count: logs.length,
-      logs
+      count: formatted.length,
+      logs: formatted
     });
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
+ * Delete single audit log entry
+ */
+export async function deleteAuditLog(req, res, next) {
+  try {
+    const { id } = req.params;
+    const db = getDbPool();
+    await db.query(`DELETE FROM admin_audit_logs WHERE id = ?`, [id]);
+    return res.json({ success: true, message: 'Audit log entry deleted.' });
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
+ * Clear all audit logs
+ */
+export async function clearAuditLogs(req, res, next) {
+  try {
+    const db = getDbPool();
+    await db.query(`DELETE FROM admin_audit_logs`);
+    return res.json({ success: true, message: 'Audit trail cleared.' });
   } catch (err) {
     next(err);
   }

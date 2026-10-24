@@ -1,6 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { getNotifications, markNotificationRead, markAllNotificationsRead } from '../services/api';
-import { Bell, CheckCheck, FileDown, ShieldAlert, Users, Clock } from 'lucide-react';
+import {
+  getNotifications,
+  markNotificationRead,
+  markAllNotificationsRead,
+  deleteNotification,
+  clearAllNotifications
+} from '../services/api';
+import { Bell, CheckCheck, FileDown, ShieldAlert, Users, Clock, Trash2 } from 'lucide-react';
 
 export default function NotificationsDropdown({ user, onSelectShare }) {
   const [open, setOpen] = useState(false);
@@ -45,6 +51,28 @@ export default function NotificationsDropdown({ user, onSelectShare }) {
     } catch {}
   };
 
+  const handleDeleteOne = async (id, e) => {
+    e.stopPropagation();
+    try {
+      await deleteNotification(id);
+      setNotifications((prev) => {
+        const item = prev.find((n) => n.id === id);
+        if (item && !item.isRead) {
+          setUnreadCount((c) => Math.max(0, c - 1));
+        }
+        return prev.filter((n) => n.id !== id);
+      });
+    } catch {}
+  };
+
+  const handleClearAll = async () => {
+    try {
+      await clearAllNotifications();
+      setNotifications([]);
+      setUnreadCount(0);
+    } catch {}
+  };
+
   const handleItemClick = async (notif) => {
     if (!notif.isRead) {
       await markNotificationRead(notif.id).catch(() => {});
@@ -85,15 +113,28 @@ export default function NotificationsDropdown({ user, onSelectShare }) {
           {/* Header */}
           <div className="flex items-center justify-between px-4 py-3 bg-slate-50 border-b border-slate-100">
             <span className="text-xs font-bold text-slate-800">Notifications</span>
-            {unreadCount > 0 && (
-              <button
-                onClick={handleMarkAll}
-                className="text-[11px] font-semibold text-rose-600 hover:text-rose-700 flex items-center gap-1"
-              >
-                <CheckCheck className="w-3.5 h-3.5" />
-                Mark all read
-              </button>
-            )}
+            <div className="flex items-center gap-2">
+              {unreadCount > 0 && (
+                <button
+                  onClick={handleMarkAll}
+                  className="text-[11px] font-semibold text-rose-600 hover:text-rose-700 flex items-center gap-1"
+                  title="Mark all notifications as read"
+                >
+                  <CheckCheck className="w-3.5 h-3.5" />
+                  Read all
+                </button>
+              )}
+              {notifications.length > 0 && (
+                <button
+                  onClick={handleClearAll}
+                  className="text-[11px] font-semibold text-slate-400 hover:text-rose-600 flex items-center gap-0.5 ml-1 transition-colors"
+                  title="Clear all notifications"
+                >
+                  <Trash2 className="w-3 h-3" />
+                  Clear
+                </button>
+              )}
+            </div>
           </div>
 
           {/* List */}
@@ -107,7 +148,7 @@ export default function NotificationsDropdown({ user, onSelectShare }) {
                 <div
                   key={n.id}
                   onClick={() => handleItemClick(n)}
-                  className={`p-3.5 hover:bg-slate-50 cursor-pointer transition-colors flex items-start gap-3 ${
+                  className={`group p-3.5 hover:bg-slate-50 cursor-pointer transition-colors flex items-start gap-3 relative ${
                     !n.isRead ? 'bg-rose-50/30' : ''
                   }`}
                 >
@@ -122,7 +163,7 @@ export default function NotificationsDropdown({ user, onSelectShare }) {
                       <Clock className="w-4 h-4 text-rose-600" />
                     )}
                   </div>
-                  <div className="flex-1 min-w-0">
+                  <div className="flex-1 min-w-0 pr-6">
                     <div className="text-xs font-bold text-slate-800 truncate">{n.title}</div>
                     <div className="text-[11px] text-slate-500 mt-0.5 line-clamp-2">
                       {n.message}
@@ -131,9 +172,19 @@ export default function NotificationsDropdown({ user, onSelectShare }) {
                       {new Date(n.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                     </div>
                   </div>
-                  {!n.isRead && (
-                    <span className="w-2 h-2 rounded-full bg-rose-600 shrink-0 mt-1.5"></span>
-                  )}
+                  
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    {!n.isRead && (
+                      <span className="w-2 h-2 rounded-full bg-rose-600 shrink-0"></span>
+                    )}
+                    <button
+                      onClick={(e) => handleDeleteOne(n.id, e)}
+                      className="opacity-0 group-hover:opacity-100 p-1 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-slate-200/60 transition-all"
+                      title="Delete notification"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
                 </div>
               ))
             )}

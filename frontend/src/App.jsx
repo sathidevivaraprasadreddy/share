@@ -19,6 +19,7 @@ export default function App() {
   const [currentView, setCurrentView] = useState('transfer'); // 'transfer' | 'inbox' | 'my-files' | 'groups' | 'activity'
   const [currentUser, setCurrentUser] = useState(null);
   const [tokenParam, setTokenParam] = useState(null);
+  const [pendingGroupInvite, setPendingGroupInvite] = useState(null);
   const [shareResult, setShareResult] = useState(() => {
     try {
       const saved = localStorage.getItem('quickshare_active_share');
@@ -67,10 +68,14 @@ export default function App() {
 
   // Check URL query parameters and verify user auth session
   useEffect(() => {
-    // 1. Check for ?token=xyz or /share/xyz in URL
+    // 1. Check for ?token=xyz or /share/xyz or ?groupInvite=xyz in URL
     const params = new URLSearchParams(window.location.search);
     const token = params.get('token');
-    if (token) {
+    const groupInvite = params.get('groupInvite');
+    if (groupInvite) {
+      setPendingGroupInvite(groupInvite);
+      setCurrentView('groups');
+    } else if (token) {
       setTokenParam(token);
     } else {
       const match = window.location.pathname.match(/\/share\/([a-zA-Z0-9_-]+)/);
@@ -313,6 +318,8 @@ export default function App() {
                 user={currentUser}
                 onRequireAuth={() => setAuthModalOpen(true)}
                 onSelectShare={(token) => setTokenParam(token)}
+                initialInviteCode={pendingGroupInvite}
+                onClearInitialInviteCode={() => setPendingGroupInvite(null)}
               />
             )}
 

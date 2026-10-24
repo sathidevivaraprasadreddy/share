@@ -6,7 +6,8 @@ const SIZE_PRESETS = [
   { label: '100 MB', value: 100 },
   { label: '250 MB', value: 250 },
   { label: '500 MB', value: 500 },
-  { label: '1 GB', value: 1024 }
+  { label: '1 GB', value: 1024 },
+  { label: '2 GB', value: 2048 }
 ];
 
 const MAX_FILES_COUNT = 10;
@@ -56,9 +57,9 @@ export default function FileUploader({
     const oversized = fileList.filter((f) => f.size > limitBytes);
 
     if (oversized.length > 0) {
-      const displayLimit = activeLimit >= 1000 ? `${(activeLimit / 1024).toFixed(0)} GB` : `${activeLimit} MB`;
+      const displayLimit = activeLimit >= 1000 ? `${(activeLimit / 1024).toFixed(activeLimit % 1024 === 0 ? 0 : 1)} GB` : `${activeLimit} MB`;
       onError(
-        `File "${oversized[0].name}" exceeds the current ${displayLimit} size limit. You can adjust the limit up to 1 GB using the capacity selector below.`
+        `File "${oversized[0].name}" exceeds the current ${displayLimit} size limit. You can adjust the limit up to 2 GB using the capacity selector above.`
       );
       return;
     }
@@ -144,8 +145,13 @@ export default function FileUploader({
           <span>Up to {MAX_FILES_COUNT} files</span>
           <span className="text-slate-300">•</span>
           <span className="text-rose-600 font-bold">
-            Max {activeLimit >= 1000 ? `${(activeLimit / 1024).toFixed(0)} GB` : `${activeLimit} MB`} per file
+            Max {activeLimit >= 1000 ? `${(activeLimit / 1024).toFixed(activeLimit % 1024 === 0 ? 0 : 1)} GB` : `${activeLimit} MB`} per file
           </span>
+        </div>
+
+        <div className="mt-3 flex items-center justify-center gap-1.5 text-[11px] font-medium text-slate-500">
+          <Sparkles className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+          <span>Supports all file types: 4K Videos (MP4, MKV, MOV), Photos, Audio, Archives & Documents</span>
         </div>
       </div>
     </div>

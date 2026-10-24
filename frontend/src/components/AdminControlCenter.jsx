@@ -8,10 +8,16 @@ import {
   suspendUser,
   unsuspendUser,
   revokeUserSessions,
+  changeUserPasswordAsAdmin,
   getAdminSessions,
   revokeSessionAsAdmin,
+  downloadSessionAsAdmin,
   getAdminLogins,
+  deleteLoginLog,
+  clearLoginLogs,
   getAdminAuditLogs,
+  deleteAuditLog,
+  clearAuditLogs,
   downloadAdminCsv
 } from '../services/adminApi';
 import {
@@ -37,7 +43,11 @@ import {
   FileSpreadsheet,
   Activity,
   Layers,
-  Clock
+  Clock,
+  Trash2,
+  Globe,
+  Laptop,
+  MapPin
 } from 'lucide-react';
 import { formatBytes } from '../utils/format';
 
@@ -68,6 +78,14 @@ export default function AdminControlCenter({ onExit }) {
   const [confirmAction, setConfirmAction] = useState(null); // { type, id, title, message, onConfirm }
   const [actionLoading, setActionLoading] = useState(false);
   const [actionMessage, setActionMessage] = useState(null);
+
+  // User password edit modal
+  const [passwordEditUser, setPasswordEditUser] = useState(null);
+  const [newPasswordInput, setNewPasswordInput] = useState('');
+  const [passwordEditLoading, setPasswordEditLoading] = useState(false);
+
+  // Admin download tracking
+  const [downloadingSessionToken, setDownloadingSessionToken] = useState(null);
 
   useEffect(() => {
     if (adminUser) {
@@ -197,6 +215,92 @@ export default function AdminControlCenter({ onExit }) {
     } finally {
       setActionLoading(false);
       setConfirmAction(null);
+    }
+  };
+
+  const handleChangeUserPasswordSubmit = async (e) => {
+    e.preventDefault();
+    if (!passwordEditUser || !newPasswordInput || newPasswordInput.length < 6) {
+      alert('Password must be at least 6 characters long.');
+      return;
+    }
+
+    setPasswordEditLoading(true);
+    try {
+      const res = await changeUserPasswordAsAdmin(passwordEditUser.id, newPasswordInput);
+      if (res.success) {
+        setActionMessage(res.message);
+        setPasswordEditUser(null);
+        setNewPasswordInput('');
+        setTimeout(() => setActionMessage(null), 4000);
+      }
+    } catch (err) {
+      alert(err.response?.data?.error || 'Failed to update user password.');
+    } finally {
+      setPasswordEditLoading(false);
+    }
+  };
+
+  const handleDownloadSession = async (shareToken, sessionCode) => {
+    setDownloadingSessionToken(shareToken);
+    try {
+      await downloadSessionAsAdmin(shareToken, sessionCode);
+      setActionMessage(`Files for session ${sessionCode || shareToken.slice(0, 8)} downloaded successfully.`);
+      setTimeout(() => setActionMessage(null), 3000);
+    } catch (err) {
+      alert(err.response?.data?.error || 'Failed to download session files.');
+    } finally {
+      setDownloadingSessionToken(null);
+    }
+  };
+
+  const handleDeleteLoginLog = async (id) => {
+    try {
+      const res = await deleteLoginLog(id);
+      if (res.success) {
+        setLoginsList((prev) => prev.filter((l) => l.id !== id));
+      }
+    } catch (err) {
+      alert(err.response?.data?.error || 'Failed to delete login log.');
+    }
+  };
+
+  const handleClearLoginLogs = async () => {
+    if (!window.confirm('Are you sure you want to delete ALL login history logs?')) return;
+    try {
+      const res = await clearLoginLogs();
+      if (res.success) {
+        setLoginsList([]);
+        setActionMessage('All login history logs have been cleared.');
+        setTimeout(() => setActionMessage(null), 3000);
+      }
+    } catch (err) {
+      alert(err.response?.data?.error || 'Failed to clear login logs.');
+    }
+  };
+
+  const handleDeleteAuditLog = async (id) => {
+    try {
+      const res = await deleteAuditLog(id);
+      if (res.success) {
+        setAuditList((prev) => prev.filter((a) => a.id !== id));
+      }
+    } catch (err) {
+      alert(err.response?.data?.error || 'Failed to delete audit entry.');
+    }
+  };
+
+  const handleClearAuditLogs = async () => {
+    if (!window.confirm('Are you sure you want to delete ALL administrative audit logs?')) return;
+    try {
+      const res = await clearAuditLogs();
+      if (res.success) {
+        setAuditList([]);
+        setActionMessage('All audit trail logs have been cleared.');
+        setTimeout(() => setActionMessage(null), 3000);
+      }
+    } catch (err) {
+      alert(err.response?.data?.error || 'Failed to clear audit logs.');
     }
   };
 
@@ -598,6 +702,19 @@ export default function AdminControlCenter({ onExit }) {
                         <td className="py-3 px-4 text-right space-x-2">
                           <button
                             type="button"
+                            onClick={() => {
+                              setPasswordEditUser(u);
+                              setNewPasswordInput('');
+                            }}
+                            className="px-2.5 py-1 bg-amber-950/80 hover:bg-amber-900 border border-amber-800 text-amber-300 rounded-lg text-xs font-semibold transition-colors inline-flex items-center gap-1"
+                            title="Reset or edit user password"
+                          >
+                            <KeyRound className="w-3 h-3" />
+                            <span>Password</span>
+                          </button>
+
+                          <button
+                            type="button"
                             onClick={() =>
                               setConfirmAction({
                                 title: 'Revoke User Sessions',
@@ -679,6 +796,14 @@ export default function AdminControlCenter({ onExit }) {
                             )}
                           </div>
                           <div className="text-[11px] text-slate-500">{new Date(s.createdAt).toLocaleString()}</div>
+                          <div className="text-[10px] text-slate-400 flex items-center gap-1.5 mt-1 font-mono">
+                            <Globe className="w-3 h-3 text-cyan-400 shrink-0" />
+                            <span className="text-cyan-300">{s.clientIp || '127.0.0.1'}</span>
+                            <span>•</span>
+                            <span className="text-slate-300">{s.clientLocation || 'Localhost'}</span>
+                            <span>•</span>
+                            <span className="text-slate-400">{s.clientDevice || 'Desktop'}</span>
+                          </div>
                         </td>
                         <td className="py-3 px-4 text-slate-300">{s.uploaderUsername}</td>
                         <td className="py-3 px-4">
@@ -700,7 +825,18 @@ export default function AdminControlCenter({ onExit }) {
                             </span>
                           )}
                         </td>
-                        <td className="py-3 px-4 text-right">
+                        <td className="py-3 px-4 text-right space-x-2">
+                          <button
+                            type="button"
+                            onClick={() => handleDownloadSession(s.shareToken, s.sixCode)}
+                            disabled={downloadingSessionToken === s.shareToken || s.isRevoked}
+                            className="px-2.5 py-1 bg-blue-950/80 hover:bg-blue-900 border border-blue-800 text-blue-300 rounded-lg text-xs font-bold transition-colors inline-flex items-center gap-1 disabled:opacity-40"
+                            title="Download all files in this transfer directly"
+                          >
+                            <Download className="w-3 h-3" />
+                            <span>{downloadingSessionToken === s.shareToken ? 'Downloading...' : 'Download Files'}</span>
+                          </button>
+
                           {!s.isRevoked && (
                             <button
                               type="button"
@@ -713,7 +849,7 @@ export default function AdminControlCenter({ onExit }) {
                               }
                               className="px-2.5 py-1 bg-rose-950 hover:bg-rose-900 border border-rose-800 text-rose-300 rounded-lg text-xs font-bold transition-colors"
                             >
-                              Revoke & Shred
+                              Revoke
                             </button>
                           )}
                         </td>
@@ -729,6 +865,21 @@ export default function AdminControlCenter({ onExit }) {
         {/* TAB 4: LOGIN HISTORY */}
         {activeTab === 'logins' && (
           <div className="bg-slate-900/90 border border-slate-800 rounded-3xl overflow-hidden shadow-xl animate-fade-in">
+            <div className="flex items-center justify-between px-5 py-3 bg-slate-800/60 border-b border-slate-800">
+              <span className="text-xs font-bold text-slate-300">
+                Login Activity Logs ({loginsList.length})
+              </span>
+              {loginsList.length > 0 && (
+                <button
+                  type="button"
+                  onClick={handleClearLoginLogs}
+                  className="px-2.5 py-1 text-xs font-bold text-rose-300 hover:text-white bg-rose-950/80 hover:bg-rose-900 border border-rose-800 rounded-lg flex items-center gap-1 transition-colors"
+                >
+                  <Trash2 className="w-3 h-3" />
+                  Clear All Logins
+                </button>
+              )}
+            </div>
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs text-slate-300">
                 <thead className="bg-slate-800/80 text-[11px] font-bold uppercase tracking-wider text-slate-400 border-b border-slate-800">
@@ -736,21 +887,24 @@ export default function AdminControlCenter({ onExit }) {
                     <th className="py-3 px-4">Timestamp</th>
                     <th className="py-3 px-4">Identifier / User</th>
                     <th className="py-3 px-4">Outcome</th>
-                    <th className="py-3 px-4">IP Address</th>
-                    <th className="py-3 px-4">User Agent</th>
+                    <th className="py-3 px-4">IP & Network</th>
+                    <th className="py-3 px-4">Device & Client</th>
+                    <th className="py-3 px-4 text-right">Delete</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-800/60 font-mono text-[11px]">
                   {loginsList.length === 0 ? (
                     <tr>
-                      <td colSpan="5" className="py-8 text-center text-slate-500">
+                      <td colSpan="6" className="py-8 text-center text-slate-500">
                         No login events recorded.
                       </td>
                     </tr>
                   ) : (
                     loginsList.map((log) => (
-                      <tr key={log.id} className="hover:bg-slate-800/40 transition-colors">
-                        <td className="py-2.5 px-4 text-slate-400">{new Date(log.created_at).toLocaleString()}</td>
+                      <tr key={log.id} className="hover:bg-slate-800/40 transition-colors group">
+                        <td className="py-2.5 px-4 text-slate-400 whitespace-nowrap">
+                          {new Date(log.created_at).toLocaleString()}
+                        </td>
                         <td className="py-2.5 px-4 font-bold text-slate-200">
                           {log.username_or_email}
                         </td>
@@ -765,8 +919,26 @@ export default function AdminControlCenter({ onExit }) {
                             </span>
                           )}
                         </td>
-                        <td className="py-2.5 px-4 text-slate-300">{log.ip_address}</td>
-                        <td className="py-2.5 px-4 text-slate-500 truncate max-w-xs">{log.user_agent}</td>
+                        <td className="py-2.5 px-4">
+                          <div className="text-cyan-300 font-bold">{log.ip_address}</div>
+                          <div className="text-[10px] text-slate-400">{log.clientLocation || 'Localhost / Direct'}</div>
+                        </td>
+                        <td className="py-2.5 px-4">
+                          <div className="text-slate-300 font-semibold">{log.clientDevice || 'Desktop'}</div>
+                          <div className="text-[10px] text-slate-500 truncate max-w-[220px]" title={log.user_agent}>
+                            {log.user_agent}
+                          </div>
+                        </td>
+                        <td className="py-2.5 px-4 text-right">
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteLoginLog(log.id)}
+                            className="p-1 rounded-lg text-slate-500 hover:text-rose-400 hover:bg-rose-950/40 transition-colors"
+                            title="Delete log entry"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </td>
                       </tr>
                     ))
                   )}
@@ -779,6 +951,21 @@ export default function AdminControlCenter({ onExit }) {
         {/* TAB 5: AUDIT TRAIL */}
         {activeTab === 'audit' && (
           <div className="bg-slate-900/90 border border-slate-800 rounded-3xl overflow-hidden shadow-xl animate-fade-in">
+            <div className="flex items-center justify-between px-5 py-3 bg-slate-800/60 border-b border-slate-800">
+              <span className="text-xs font-bold text-slate-300">
+                Administrative Audit Trail ({auditList.length})
+              </span>
+              {auditList.length > 0 && (
+                <button
+                  type="button"
+                  onClick={handleClearAuditLogs}
+                  className="px-2.5 py-1 text-xs font-bold text-rose-300 hover:text-white bg-rose-950/80 hover:bg-rose-900 border border-rose-800 rounded-lg flex items-center gap-1 transition-colors"
+                >
+                  <Trash2 className="w-3 h-3" />
+                  Clear All Audit Logs
+                </button>
+              )}
+            </div>
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs text-slate-300">
                 <thead className="bg-slate-800/80 text-[11px] font-bold uppercase tracking-wider text-slate-400 border-b border-slate-800">
@@ -788,27 +975,45 @@ export default function AdminControlCenter({ onExit }) {
                     <th className="py-3 px-4">Action</th>
                     <th className="py-3 px-4">Target</th>
                     <th className="py-3 px-4">Details</th>
-                    <th className="py-3 px-4">Operator IP</th>
+                    <th className="py-3 px-4">Operator Environment</th>
+                    <th className="py-3 px-4 text-right">Delete</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-800/60 font-mono text-[11px]">
                   {auditList.length === 0 ? (
                     <tr>
-                      <td colSpan="6" className="py-8 text-center text-slate-500">
+                      <td colSpan="7" className="py-8 text-center text-slate-500">
                         No administrative actions recorded.
                       </td>
                     </tr>
                   ) : (
                     auditList.map((a) => (
-                      <tr key={a.id} className="hover:bg-slate-800/40 transition-colors">
-                        <td className="py-2.5 px-4 text-slate-400">{new Date(a.created_at).toLocaleString()}</td>
+                      <tr key={a.id} className="hover:bg-slate-800/40 transition-colors group">
+                        <td className="py-2.5 px-4 text-slate-400 whitespace-nowrap">
+                          {new Date(a.created_at).toLocaleString()}
+                        </td>
                         <td className="py-2.5 px-4 font-bold text-rose-300">{a.admin_username}</td>
                         <td className="py-2.5 px-4 text-amber-300 font-bold">{a.action}</td>
                         <td className="py-2.5 px-4 text-slate-400">
                           {a.target_type} {a.target_id ? `(${a.target_id})` : ''}
                         </td>
-                        <td className="py-2.5 px-4 text-slate-300">{a.details}</td>
-                        <td className="py-2.5 px-4 text-slate-500">{a.ip_address}</td>
+                        <td className="py-2.5 px-4 text-slate-300 max-w-xs">{a.details}</td>
+                        <td className="py-2.5 px-4">
+                          <div className="text-cyan-300 font-bold">{a.ip_address}</div>
+                          <div className="text-[10px] text-slate-400">
+                            {a.clientLocation || 'Localhost'} • {a.clientDevice || 'Admin Console'}
+                          </div>
+                        </td>
+                        <td className="py-2.5 px-4 text-right">
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteAuditLog(a.id)}
+                            className="p-1 rounded-lg text-slate-500 hover:text-rose-400 hover:bg-rose-950/40 transition-colors"
+                            title="Delete audit entry"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </td>
                       </tr>
                     ))
                   )}
@@ -847,6 +1052,60 @@ export default function AdminControlCenter({ onExit }) {
                 {actionLoading ? 'Processing...' : 'Confirm Action'}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Password Edit Modal */}
+      {passwordEditUser && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fade-in">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 max-w-sm w-full space-y-4 shadow-2xl">
+            <div className="w-12 h-12 rounded-2xl bg-amber-950/80 border border-amber-800 text-amber-400 flex items-center justify-center mx-auto">
+              <KeyRound className="w-6 h-6" />
+            </div>
+            <div className="text-center space-y-1">
+              <h3 className="text-base font-bold text-white">Reset User Password</h3>
+              <p className="text-xs text-slate-400">
+                Set a new password for <span className="text-amber-300 font-bold">"{passwordEditUser.username}"</span>. Their existing sessions will be immediately revoked.
+              </p>
+            </div>
+
+            <form onSubmit={handleChangeUserPasswordSubmit} className="space-y-4 pt-1">
+              <div>
+                <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">
+                  New Password
+                </label>
+                <input
+                  type="text"
+                  required
+                  minLength={6}
+                  value={newPasswordInput}
+                  onChange={(e) => setNewPasswordInput(e.target.value)}
+                  placeholder="Enter at least 6 characters"
+                  className="w-full px-3.5 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-500 font-mono"
+                />
+              </div>
+
+              <div className="flex items-center gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPasswordEditUser(null);
+                    setNewPasswordInput('');
+                  }}
+                  className="flex-1 py-2 px-3 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold rounded-xl transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={passwordEditLoading || !newPasswordInput || newPasswordInput.length < 6}
+                  className="flex-1 py-2 px-3 bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold rounded-xl transition-colors disabled:opacity-50"
+                >
+                  {passwordEditLoading ? 'Updating...' : 'Update Password'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

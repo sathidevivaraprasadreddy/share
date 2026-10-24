@@ -71,11 +71,14 @@ export async function createShareSession(req, res, next) {
   try {
     await connection.beginTransaction();
 
+    const clientIp = req.ip || req.headers['x-forwarded-for'] || req.socket?.remoteAddress || '127.0.0.1';
+    const userAgent = req.headers['user-agent'] || 'Unknown';
+
     // 1. Insert session record
     const [sessionResult] = await connection.query(
       `INSERT INTO share_sessions 
-       (user_id, share_token, revoke_token, six_code, password_hash, max_downloads, total_size_bytes, file_count, note, expires_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       (user_id, share_token, revoke_token, six_code, password_hash, max_downloads, total_size_bytes, file_count, note, ip_address, user_agent, expires_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         userId,
         shareToken,
@@ -86,6 +89,8 @@ export async function createShareSession(req, res, next) {
         totalSizeBytes,
         files.length,
         note ? note.trim() : null,
+        String(clientIp),
+        String(userAgent).substring(0, 255),
         expiresAt
       ]
     );

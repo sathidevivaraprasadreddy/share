@@ -117,3 +117,89 @@ export async function markAllNotificationsRead(req, res, next) {
     next(err);
   }
 }
+
+/**
+ * Delete a single notification
+ */
+export async function deleteNotification(req, res, next) {
+  try {
+    const { id } = req.params;
+    const db = getDbPool();
+
+    await db.query(
+      `DELETE FROM notifications WHERE id = ? AND user_id = ?`,
+      [id, req.user.id]
+    );
+
+    return res.json({
+      success: true,
+      message: 'Notification deleted.'
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
+ * Clear all notifications for authenticated user
+ */
+export async function clearAllNotifications(req, res, next) {
+  try {
+    const db = getDbPool();
+
+    await db.query(
+      `DELETE FROM notifications WHERE user_id = ?`,
+      [req.user.id]
+    );
+
+    return res.json({
+      success: true,
+      message: 'All notifications cleared.'
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
+ * Delete a single user activity log entry
+ */
+export async function deleteActivityLog(req, res, next) {
+  try {
+    const { id } = req.params;
+    const db = getDbPool();
+
+    await db.query(
+      `DELETE FROM activity_logs WHERE id = ? AND user_id = ?`,
+      [id, req.user.id]
+    );
+
+    return res.json({
+      success: true,
+      message: 'Activity log entry removed.'
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
+ * Clear all user activity history
+ */
+export async function clearAllActivityLogs(req, res, next) {
+  try {
+    const db = getDbPool();
+
+    await db.query(
+      `DELETE FROM activity_logs WHERE user_id = ?`,
+      [req.user.id]
+    );
+
+    return res.json({
+      success: true,
+      message: 'Activity history cleared.'
+    });
+  } catch (err) {
+    next(err);
+  }
+}

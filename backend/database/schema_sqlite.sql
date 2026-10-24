@@ -48,6 +48,8 @@ CREATE TABLE IF NOT EXISTS share_sessions (
   file_count INTEGER NOT NULL DEFAULT 1,
   share_type TEXT NOT NULL DEFAULT 'link',
   note TEXT NULL,
+  ip_address TEXT NULL,
+  user_agent TEXT NULL,
   expires_at DATETIME NOT NULL,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   is_revoked INTEGER NOT NULL DEFAULT 0,
@@ -102,10 +104,12 @@ CREATE TABLE IF NOT EXISTS groups (
   owner_user_id INTEGER NOT NULL,
   name TEXT NOT NULL,
   description TEXT NULL,
+  invite_code TEXT NULL UNIQUE,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (owner_user_id) REFERENCES users (id) ON DELETE CASCADE
 );
 CREATE INDEX IF NOT EXISTS idx_group_owner ON groups (owner_user_id);
+CREATE INDEX IF NOT EXISTS idx_group_invite ON groups (invite_code);
 
 -- Table: group_members
 CREATE TABLE IF NOT EXISTS group_members (

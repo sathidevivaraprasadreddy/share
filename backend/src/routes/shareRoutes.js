@@ -44,13 +44,19 @@ import {
   removeMember,
   shareWithGroup,
   deleteGroup,
-  leaveGroup
+  leaveGroup,
+  getGroupByInvite,
+  joinGroupByInvite
 } from '../controllers/groupController.js';
 import {
   getActivityTimeline,
   getNotifications,
   markNotificationRead,
-  markAllNotificationsRead
+  markAllNotificationsRead,
+  deleteNotification,
+  clearAllNotifications,
+  deleteActivityLog,
+  clearAllActivityLogs
 } from '../controllers/activityController.js';
 import { upload } from '../middleware/upload.js';
 import { uploadLimiter, downloadLimiter } from '../middleware/rateLimiter.js';
@@ -134,6 +140,8 @@ router.post('/my-files/:id/restore', authenticateRequired, restoreFile);
 // ==========================================
 router.get('/groups', authenticateRequired, getGroups);
 router.post('/groups', authenticateRequired, createGroup);
+router.get('/groups/invite/:code', authenticateOptional, getGroupByInvite);
+router.post('/groups/join-invite', authenticateRequired, joinGroupByInvite);
 router.get('/groups/:id', authenticateRequired, getGroupDetails);
 router.delete('/groups/:id', authenticateRequired, deleteGroup);
 router.post('/groups/:id/members', authenticateRequired, addMember);
@@ -145,8 +153,12 @@ router.post('/groups/:id/share', authenticateRequired, shareWithGroup);
 // 7. Activity Timeline & Notifications
 // ==========================================
 router.get('/activity', authenticateRequired, getActivityTimeline);
+router.delete('/activity/:id', authenticateRequired, deleteActivityLog);
+router.delete('/activity', authenticateRequired, clearAllActivityLogs);
 router.get('/notifications', authenticateRequired, getNotifications);
 router.patch('/notifications/:id/read', authenticateRequired, markNotificationRead);
 router.post('/notifications/read-all', authenticateRequired, markAllNotificationsRead);
+router.delete('/notifications/:id', authenticateRequired, deleteNotification);
+router.delete('/notifications', authenticateRequired, clearAllNotifications);
 
 export default router;

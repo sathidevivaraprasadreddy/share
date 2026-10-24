@@ -1,3 +1,4 @@
+import crypto from 'crypto';
 import { getDbPool } from '../config/db.js';
 
 /**
@@ -9,7 +10,7 @@ export async function getGroups(req, res, next) {
     const db = getDbPool();
 
     const [groups] = await db.query(
-      `SELECT g.id, g.name, g.description, g.created_at, gm.role,
+      `SELECT g.id, g.name, g.description, g.invite_code, g.created_at, gm.role,
               (SELECT COUNT(*) FROM group_members WHERE group_id = g.id) AS member_count,
               (SELECT COUNT(*) FROM group_shares WHERE group_id = g.id AND is_revoked = 0) AS active_shares_count
        FROM groups g
@@ -25,6 +26,7 @@ export async function getGroups(req, res, next) {
         id: g.id,
         name: g.name,
         description: g.description,
+        inviteCode: g.invite_code,
         role: g.role,
         memberCount: g.member_count,
         activeSharesCount: g.active_shares_count,
@@ -48,6 +50,7 @@ export async function createGroup(req, res, next) {
 
     const cleanName = name.trim().substring(0, 100);
     const cleanDesc = description ? description.trim().substring(0, 255) : null;
+    const inviteCode = crypto.randomBytes(8).toString('hex');
     const userId = req.user.id;
     const db = getDbPool();
 
@@ -55,10 +58,10 @@ export async function createGroup(req, res, next) {
     try {
       await connection.beginTransaction();
 
-      // 1. Insert group
+      // 1. Insert group with invite code
       const [groupResult] = await connection.query(
-        `INSERT INTO groups (owner_user_id, name, description) VALUES (?, ?, ?)`,
-        [userId, cleanName, cleanDesc]
+        `INSERT INTO groups (owner_user_id, name, description, invite_code) VALUES (?, ?, ?, ?)`,
+        [userId, cleanName, cleanDesc, inviteCode]
       );
 
       const groupId = groupResult.insertId;
@@ -78,6 +81,7 @@ export async function createGroup(req, res, next) {
           id: groupId,
           name: cleanName,
           description: cleanDesc,
+          inviteCode,
           role: 'owner',
           memberCount: 1
         }
@@ -410,5 +414,132 @@ export async function deleteGroup(req, res, next) {
 export async function leaveGroup(req, res, next) {
   req.params.userId = req.user.id;
   return removeMember(req, res, next);
+}
+
+/**
+ * Preview group details via public/authenticated invite code
+ */
+export async function getGroupByInvite(req, res, next) {
+  try {
+    const { code } = req.params;
+    if (!code) {
+      return res.status(400).json({ success: false, error: 'Invite code is required.' });
+    }
+    const cleanCode = code.trim().toLowerCase();
+    const db = getDbPool();
+
+    const [groups] = await db.query(
+      `SELECT g.id, g.name, g.description, g.invite_code, g.created_at,
+              u.username AS owner_username,
+              (SELECT COUNT(*) FROM group_members WHERE group_id = g.id) AS member_count
+       FROM groups g
+       JOIN users u ON g.owner_user_id = u.id
+       WHERE g.invite_code = ?`,
+      [cleanCode]
+    );
+
+    if (groups.length === 0) {
+      return res.status(404).json({ success: false, error: 'Group invite link is invalid or expired.' });
+    }
+
+    const g = groups[0];
+    let isAlreadyMember = false;
+    if (req.user) {
+      const [members] = await db.query(
+        `SELECT id FROM group_members WHERE group_id = ? AND user_id = ?`,
+        [g.id, req.user.id]
+      );
+      isAlreadyMember = members.length > 0;
+    }
+
+    return res.json({
+      success: true,
+      group: {
+        id: g.id,
+        name: g.name,
+        description: g.description,
+        inviteCode: g.invite_code,
+        memberCount: g.member_count,
+        ownerUsername: g.owner_username,
+        isAlreadyMember
+      }
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
+ * Join group via invite code
+ */
+export async function joinGroupByInvite(req, res, next) {
+  try {
+    const code = req.body.code || req.body.inviteCode;
+    if (!code) {
+      return res.status(400).json({ success: false, error: 'Please provide a valid group invite code or link.' });
+    }
+
+    // Clean code if a full URL or param was pasted
+    let cleanCode = code.trim().toLowerCase();
+    if (cleanCode.includes('invite=') || cleanCode.includes('groupInvite=')) {
+      const match = cleanCode.match(/(?:invite|groupInvite)=([a-z0-9]+)/i);
+      if (match) cleanCode = match[1].toLowerCase();
+    } else if (cleanCode.includes('/group/join/')) {
+      const match = cleanCode.match(/\/group\/join\/([a-z0-9]+)/i);
+      if (match) cleanCode = match[1].toLowerCase();
+    }
+
+    const userId = req.user.id;
+    const db = getDbPool();
+
+    const [groups] = await db.query(
+      `SELECT id, name, owner_user_id FROM groups WHERE invite_code = ?`,
+      [cleanCode]
+    );
+
+    if (groups.length === 0) {
+      return res.status(404).json({ success: false, error: 'Invalid or expired group invite link.' });
+    }
+
+    const group = groups[0];
+
+    // Check if user is already a member
+    const [existing] = await db.query(
+      `SELECT id FROM group_members WHERE group_id = ? AND user_id = ?`,
+      [group.id, userId]
+    );
+
+    if (existing.length > 0) {
+      return res.json({
+        success: true,
+        alreadyMember: true,
+        message: `You are already a member of "${group.name}".`,
+        groupId: group.id
+      });
+    }
+
+    // Insert membership
+    await db.query(
+      `INSERT INTO group_members (group_id, user_id, role) VALUES (?, ?, 'member')`,
+      [group.id, userId]
+    );
+
+    // Notify group owner
+    if (group.owner_user_id !== userId) {
+      await db.query(
+        `INSERT INTO notifications (user_id, title, message, type)
+         VALUES (?, 'New Group Member', ?, 'group')`,
+        [group.owner_user_id, `${req.user.username} joined your group "${group.name}" via invite link.`]
+      );
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: `You have successfully joined "${group.name}"!`,
+      groupId: group.id
+    });
+  } catch (err) {
+    next(err);
+  }
 }
 
