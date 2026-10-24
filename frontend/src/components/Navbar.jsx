@@ -35,8 +35,8 @@ export default function Navbar({
 
   const navItems = [
     { id: 'transfer', label: 'Transfer', icon: Send },
+    { id: 'my-files', label: 'My Files', icon: FolderLock, requireAuth: false },
     { id: 'inbox', label: 'Inbox', icon: Inbox, requireAuth: true },
-    { id: 'my-files', label: 'My Files', icon: FolderLock, requireAuth: true },
     { id: 'groups', label: 'Groups', icon: Users, requireAuth: true },
     { id: 'activity', label: 'Activity', icon: Activity, requireAuth: true }
   ];

@@ -26,6 +26,13 @@ export default function App() {
       return null;
     }
   });
+  const [isViewingShareResult, setIsViewingShareResult] = useState(() => {
+    try {
+      return Boolean(localStorage.getItem('quickshare_active_share'));
+    } catch {
+      return false;
+    }
+  });
   const [qrModalUrl, setQrModalUrl] = useState(null);
 
   // Modals
@@ -108,8 +115,10 @@ export default function App() {
       try {
         localStorage.setItem('quickshare_active_share', JSON.stringify(result));
       } catch {}
+      setIsViewingShareResult(true);
     } else {
       localStorage.removeItem('quickshare_active_share');
+      setIsViewingShareResult(false);
     }
   };
 
@@ -118,11 +127,25 @@ export default function App() {
       const res = await revokeSession(shareToken, revokeToken);
       if (res.success) {
         setSuccessNotification('Sharing session revoked and files removed permanently from storage.');
-        setShareResult(null);
-        localStorage.removeItem('quickshare_active_share');
+        if (shareResult && shareResult.shareToken === shareToken) {
+          setShareResult(null);
+          localStorage.removeItem('quickshare_active_share');
+          setIsViewingShareResult(false);
+        }
+        try {
+          const raw = localStorage.getItem('quickshare_recent_transfers');
+          if (raw) {
+            const list = JSON.parse(raw);
+            const updated = list.filter((t) => t.shareToken !== shareToken);
+            localStorage.setItem('quickshare_recent_transfers', JSON.stringify(updated));
+          }
+        } catch {}
+        return true;
       }
+      return false;
     } catch (err) {
       setErrorMessage(err.response?.data?.error || 'Failed to revoke session.');
+      return false;
     }
   };
 
@@ -133,8 +156,8 @@ export default function App() {
     window.history.pushState({}, '', url.pathname);
 
     setTokenParam(null);
-    setShareResult(null);
     setErrorMessage(null);
+    setIsViewingShareResult(false);
     setCurrentView('transfer');
   };
 
@@ -158,10 +181,11 @@ export default function App() {
           setCurrentView(view);
         }}
         activeShare={shareResult}
-        isViewingShareResult={Boolean(shareResult && !tokenParam && currentView === 'transfer')}
+        isViewingShareResult={Boolean(shareResult && !tokenParam && currentView === 'transfer' && isViewingShareResult)}
         onSelectActiveShare={() => {
           setTokenParam(null);
           setCurrentView('transfer');
+          setIsViewingShareResult(true);
         }}
         currentUser={currentUser}
         onOpenAuth={() => setAuthModalOpen(true)}
@@ -205,26 +229,29 @@ export default function App() {
             token={tokenParam}
             onBackToUpload={handleResetToUpload}
           />
-        ) : shareResult ? (
-          <ShareResult
-            result={shareResult}
-            onReset={handleResetToUpload}
-            onShowQR={(url) => setQrModalUrl(url)}
-            onRevoke={handleRevoke}
-          />
         ) : (
           <>
             {currentView === 'transfer' && (
-              <TransferDashboard
-                currentUser={currentUser}
-                activeShare={shareResult}
-                onShareCompleted={handleShareCompleted}
-                onReceiveToken={(token) => setTokenParam(token)}
-                onRequestAuth={() => setAuthModalOpen(true)}
-                onOpenRevoke={() => setRevokeModalOpen(true)}
-                onError={(err) => setErrorMessage(err)}
-                onSuccess={(msg) => setSuccessNotification(msg)}
-              />
+              isViewingShareResult && shareResult ? (
+                <ShareResult
+                  result={shareResult}
+                  onReset={() => setIsViewingShareResult(false)}
+                  onShowQR={(url) => setQrModalUrl(url)}
+                  onRevoke={handleRevoke}
+                />
+              ) : (
+                <TransferDashboard
+                  currentUser={currentUser}
+                  activeShare={shareResult}
+                  onShareCompleted={handleShareCompleted}
+                  onViewActiveShare={() => setIsViewingShareResult(true)}
+                  onReceiveToken={(token) => setTokenParam(token)}
+                  onRequestAuth={() => setAuthModalOpen(true)}
+                  onOpenRevoke={() => setRevokeModalOpen(true)}
+                  onError={(err) => setErrorMessage(err)}
+                  onSuccess={(msg) => setSuccessNotification(msg)}
+                />
+              )
             )}
 
             {currentView === 'inbox' && (
@@ -237,8 +264,16 @@ export default function App() {
             {currentView === 'my-files' && (
               <MyFilesView
                 user={currentUser}
+                activeShare={shareResult}
                 onRequireAuth={() => setAuthModalOpen(true)}
                 onSelectShare={(token) => setTokenParam(token)}
+                onShowQR={(url) => setQrModalUrl(url)}
+                onRevoke={handleRevoke}
+                onOpenActiveShare={(share) => {
+                  handleShareCompleted(share);
+                  setCurrentView('transfer');
+                  setIsViewingShareResult(true);
+                }}
               />
             )}
 

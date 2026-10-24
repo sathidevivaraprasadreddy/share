@@ -35,6 +35,7 @@ export default function TransferDashboard({
   currentUser,
   activeShare,
   onShareCompleted,
+  onViewActiveShare,
   onReceiveToken,
   onRequestAuth,
   onOpenRevoke,
@@ -464,7 +465,10 @@ export default function TransferDashboard({
 
               <button
                 type="button"
-                onClick={() => onShareCompleted(activeShare)}
+                onClick={() => {
+                  if (onViewActiveShare) onViewActiveShare();
+                  else onShareCompleted(activeShare);
+                }}
                 className="inline-flex items-center justify-center gap-1.5 px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold shadow-xs hover:shadow-sm transition-all shrink-0"
               >
                 <span>View Code, QR & Revoke Key</span>

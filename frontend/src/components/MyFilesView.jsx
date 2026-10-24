@@ -20,11 +20,30 @@ import {
   ShieldCheck,
   Check,
   X,
-  AlertCircle
+  AlertCircle,
+  QrCode,
+  Copy,
+  KeyRound,
+  ExternalLink,
+  ShieldAlert,
+  Sparkles,
+  Link as LinkIcon,
+  ChevronDown,
+  ChevronUp,
+  Share2
 } from 'lucide-react';
 import { formatBytes } from '../utils/format';
+import { formatTimeRemaining } from '../utils/formatters';
 
-export default function MyFilesView({ user, onRequireAuth }) {
+export default function MyFilesView({
+  user,
+  activeShare,
+  onRequireAuth,
+  onSelectShare,
+  onShowQR,
+  onRevoke,
+  onOpenActiveShare
+}) {
   const [category, setCategory] = useState('all'); // all, images, documents, media, archives, trash
   const [search, setSearch] = useState('');
   const [sort, setSort] = useState('date_desc');
@@ -36,14 +55,40 @@ export default function MyFilesView({ user, onRequireAuth }) {
   const [error, setError] = useState(null);
   const [msg, setMsg] = useState(null);
 
+  // Expanded share toolkit per file ID
+  const [expandedFileId, setExpandedFileId] = useState(null);
+  // Track copied status for buttons: key formatted as `${type}-${id}`
+  const [copiedKey, setCopiedKey] = useState(null);
+  // Confirm revoke per item ID
+  const [confirmRevokeId, setConfirmRevokeId] = useState(null);
+  const [revokingId, setRevokingId] = useState(null);
+
+  // Guest / local transfers from localStorage
+  const [localTransfers, setLocalTransfers] = useState([]);
+
   useEffect(() => {
     if (!user) {
+      loadLocalTransfers();
       setLoading(false);
       return;
     }
     loadFiles();
     loadStats();
   }, [user, category, sort]);
+
+  const loadLocalTransfers = () => {
+    try {
+      const raw = localStorage.getItem('quickshare_recent_transfers');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) {
+          setLocalTransfers(parsed);
+          return;
+        }
+      }
+    } catch {}
+    setLocalTransfers([]);
+  };
 
   const loadFiles = async () => {
     setLoading(true);
@@ -67,9 +112,20 @@ export default function MyFilesView({ user, onRequireAuth }) {
     } catch {}
   };
 
+  const handleCopy = (text, key) => {
+    if (!text) return;
+    navigator.clipboard.writeText(text);
+    setCopiedKey(key);
+    setTimeout(() => {
+      setCopiedKey((curr) => (curr === key ? null : curr));
+    }, 2500);
+  };
+
   const handleSearchSubmit = (e) => {
     e.preventDefault();
-    loadFiles();
+    if (user) {
+      loadFiles();
+    }
   };
 
   const handleStartRename = (file) => {
@@ -121,26 +177,275 @@ export default function MyFilesView({ user, onRequireAuth }) {
     }
   };
 
+  const handleExecuteRevoke = async (shareToken, revokeToken, targetId) => {
+    if (!shareToken || !revokeToken) {
+      setError('Cannot revoke: Missing revocation token.');
+      return;
+    }
+    setRevokingId(targetId);
+    try {
+      if (onRevoke) {
+        const ok = await onRevoke(shareToken, revokeToken);
+        if (ok !== false) {
+          // If logged in, update list or mark revoked
+          setFiles((prev) =>
+            prev.map((f) => (f.shareToken === shareToken ? { ...f, isRevoked: true } : f))
+          );
+          // If in local guest transfers, remove from list
+          setLocalTransfers((prev) => prev.filter((t) => t.shareToken !== shareToken));
+          setConfirmRevokeId(null);
+          setMsg('Sharing session revoked and files deleted permanently.');
+          setTimeout(() => setMsg(null), 4000);
+          if (user) loadStats();
+        }
+      }
+    } catch (err) {
+      setError('Failed to revoke session.');
+    } finally {
+      setRevokingId(null);
+    }
+  };
+
+  // ==========================================
+  // GUEST MODE (When not logged in)
+  // ==========================================
   if (!user) {
+    const sentLocal = localTransfers.filter((t) => t.type === 'sent' || t.shareToken);
+
     return (
-      <div className="bg-white rounded-3xl p-8 shadow-xl border border-slate-100 max-w-lg mx-auto text-center space-y-4 animate-fade-in">
-        <div className="w-14 h-14 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center mx-auto">
-          <Folder className="w-7 h-7" />
+      <div className="max-w-4xl w-full mx-auto space-y-6 animate-fade-in">
+        {/* Guest Banner */}
+        <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-start gap-3">
+            <div className="w-12 h-12 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center shrink-0">
+              <Folder className="w-6 h-6" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h1 className="text-lg sm:text-xl font-bold text-slate-900">
+                  My Files & Active Transfers
+                </h1>
+                <span className="text-[10px] bg-amber-100 text-amber-800 font-bold px-2 py-0.5 rounded-full">
+                  Device Storage
+                </span>
+              </div>
+              <p className="text-xs text-slate-500 mt-1">
+                Showing files created from this browser. Sign in or create a free account to access them anywhere with 1 GB cloud storage.
+              </p>
+            </div>
+          </div>
+
+          <button
+            onClick={onRequireAuth}
+            className="py-2.5 px-5 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-xl shadow-xs transition-all shrink-0"
+          >
+            Sign In / Register (100% Free)
+          </button>
         </div>
-        <h2 className="text-xl font-bold text-slate-900">Personal File Manager</h2>
-        <p className="text-xs sm:text-sm text-slate-500">
-          Sign in or create a free account to view and manage all files you have uploaded.
-        </p>
-        <button
-          onClick={onRequireAuth}
-          className="py-2.5 px-6 bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold rounded-xl shadow-md transition-all"
-        >
-          Sign In or Register (100% Free)
-        </button>
+
+        {/* Notifications */}
+        {msg && (
+          <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-2xl text-xs font-medium">
+            {msg}
+          </div>
+        )}
+        {error && (
+          <div className="p-3 bg-rose-50 border border-rose-200 text-rose-700 rounded-2xl text-xs font-medium flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 shrink-0" />
+            {error}
+          </div>
+        )}
+
+        {/* Recent Device Transfers List */}
+        {sentLocal.length === 0 ? (
+          <div className="bg-white rounded-3xl p-12 text-center shadow-sm border border-slate-100 space-y-3">
+            <FileText className="w-10 h-10 text-slate-300 mx-auto" />
+            <h3 className="text-sm font-bold text-slate-700">No transfers on this device yet</h3>
+            <p className="text-xs text-slate-400 max-w-sm mx-auto">
+              Files you upload will appear here with instant download links, 6-digit codes, QR codes, and secret revocation keys.
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <h2 className="text-xs font-bold uppercase tracking-wider text-slate-400 px-1">
+              Active Device Shares ({sentLocal.length})
+            </h2>
+
+            <div className="grid gap-4">
+              {sentLocal.map((item, idx) => {
+                const targetId = item.shareToken || `local-${idx}`;
+                const shareUrl = `${window.location.origin}/?token=${item.shareToken}`;
+                const isCopiedLink = copiedKey === `link-${targetId}`;
+                const isCopiedCode = copiedKey === `code-${targetId}`;
+                const isCopiedKey = copiedKey === `key-${targetId}`;
+                const isConfirming = confirmRevokeId === targetId;
+                const isRevoking = revokingId === targetId;
+
+                return (
+                  <div
+                    key={targetId}
+                    className="bg-white rounded-3xl p-5 shadow-sm border border-slate-100 space-y-4 hover:border-slate-200 transition-all"
+                  >
+                    {/* Header */}
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center font-bold text-xs shrink-0">
+                          <FileText className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs sm:text-sm font-bold text-slate-900">
+                              {item.fileCount ? `${item.fileCount} File(s) Shared` : 'Shared Transfer'}
+                            </span>
+                            {item.sixCode && (
+                              <span className="text-[10px] bg-rose-100 text-rose-800 font-mono font-bold px-2 py-0.5 rounded-full">
+                                Code: {item.sixCode}
+                              </span>
+                            )}
+                          </div>
+                          <div className="text-[11px] text-slate-400 flex items-center gap-2 mt-0.5">
+                            {item.totalSizeBytes ? (
+                              <span>{formatBytes(item.totalSizeBytes)}</span>
+                            ) : null}
+                            <span>•</span>
+                            <span>{item.date || 'Recent'}</span>
+                            {item.expiresAt && (
+                              <>
+                                <span>•</span>
+                                <span className="flex items-center gap-1 text-slate-500">
+                                  <Clock className="w-3 h-3" />
+                                  {formatTimeRemaining(item.expiresAt)}
+                                </span>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Download / View Button */}
+                      <div className="flex items-center gap-2">
+                        {onOpenActiveShare && (
+                          <button
+                            type="button"
+                            onClick={() => onOpenActiveShare(item)}
+                            className="py-1.5 px-3 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-xl flex items-center gap-1.5 transition-colors"
+                          >
+                            <Sparkles className="w-3.5 h-3.5 text-rose-500" />
+                            <span>Open Details</span>
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Quick Access Tools: Link, Code, QR, Revocation */}
+                    <div className="p-3.5 bg-slate-50 rounded-2xl border border-slate-100 flex flex-wrap items-center gap-2 text-xs">
+                      {/* Copy Share Link */}
+                      <button
+                        type="button"
+                        onClick={() => handleCopy(shareUrl, `link-${targetId}`)}
+                        className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-semibold transition-all border ${
+                          isCopiedLink
+                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                            : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                        }`}
+                      >
+                        {isCopiedLink ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <LinkIcon className="w-3.5 h-3.5 text-slate-500" />}
+                        <span>{isCopiedLink ? 'Link Copied!' : 'Copy Share Link'}</span>
+                      </button>
+
+                      {/* Copy 6-Digit Code */}
+                      {item.sixCode && (
+                        <button
+                          type="button"
+                          onClick={() => handleCopy(item.sixCode, `code-${targetId}`)}
+                          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-mono font-semibold transition-all border ${
+                            isCopiedCode
+                              ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                              : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                          }`}
+                        >
+                          {isCopiedCode ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <KeyRound className="w-3.5 h-3.5 text-rose-500" />}
+                          <span>{isCopiedCode ? 'Code Copied!' : `Code: ${item.sixCode}`}</span>
+                        </button>
+                      )}
+
+                      {/* QR Code Button */}
+                      {onShowQR && (
+                        <button
+                          type="button"
+                          onClick={() => onShowQR(shareUrl)}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 hover:bg-slate-100 text-slate-700 rounded-xl font-semibold transition-all"
+                        >
+                          <QrCode className="w-3.5 h-3.5 text-slate-600" />
+                          <span>Show QR</span>
+                        </button>
+                      )}
+
+                      {/* Copy Revoke Token */}
+                      {item.revokeToken && (
+                        <button
+                          type="button"
+                          onClick={() => handleCopy(item.revokeToken, `key-${targetId}`)}
+                          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-semibold transition-all border ${
+                            isCopiedKey
+                              ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                              : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                          }`}
+                          title={item.revokeToken}
+                        >
+                          {isCopiedKey ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <ShieldAlert className="w-3.5 h-3.5 text-amber-500" />}
+                          <span>{isCopiedKey ? 'Revoke Key Copied!' : 'Copy Revoke Key'}</span>
+                        </button>
+                      )}
+
+                      {/* Revoke and Delete Early */}
+                      {item.revokeToken && (
+                        <div className="ml-auto">
+                          {isConfirming ? (
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-[11px] text-rose-700 font-bold">Delete now?</span>
+                              <button
+                                type="button"
+                                disabled={isRevoking}
+                                onClick={() => handleExecuteRevoke(item.shareToken, item.revokeToken, targetId)}
+                                className="px-2.5 py-1 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-[11px] font-bold"
+                              >
+                                {isRevoking ? 'Deleting...' : 'Confirm'}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setConfirmRevokeId(null)}
+                                className="px-2 py-1 text-slate-500 hover:text-slate-700 text-[11px]"
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => setConfirmRevokeId(targetId)}
+                              className="text-rose-600 hover:text-rose-700 text-xs font-semibold px-2 py-1 hover:bg-rose-50 rounded-lg transition-colors flex items-center gap-1"
+                            >
+                              <ShieldAlert className="w-3.5 h-3.5" />
+                              <span>Revoke & Shred</span>
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </div>
     );
   }
 
+  // ==========================================
+  // LOGGED-IN USER VIEW
+  // ==========================================
   const quotaMB = ((stats?.quotaBytes || 1073741824) / (1024 * 1024)).toFixed(0);
   const usedMB = ((stats?.usedBytes || 0) / (1024 * 1024)).toFixed(1);
   const percentUsed = stats?.percentageUsed || 0;
@@ -156,7 +461,7 @@ export default function MyFilesView({ user, onRequireAuth }) {
               My Files
             </h1>
             <p className="text-xs text-slate-500 mt-0.5">
-              Manage your uploaded documents, media, and active shares.
+              Manage your uploaded documents, download links, 6-digit codes, QR codes, and secret revocation keys.
             </p>
           </div>
 
@@ -264,127 +569,266 @@ export default function MyFilesView({ user, onRequireAuth }) {
           <p className="text-xs text-slate-400 max-w-sm mx-auto">
             {category === 'trash'
               ? 'Your trash bin is currently empty.'
-              : 'Files you upload will appear here with instant download and management controls.'}
+              : 'Files you upload will appear here with instant download links, QR codes, and revocation keys.'}
           </p>
         </div>
       ) : (
         <div className="bg-white rounded-3xl shadow-sm border border-slate-100 divide-y divide-slate-100 overflow-hidden">
-          {files.map((file) => (
-            <div
-              key={file.id}
-              className="p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-slate-50 transition-colors"
-            >
-              {/* File Info */}
-              <div className="flex items-start gap-3 min-w-0">
-                <div className="p-2.5 rounded-2xl bg-rose-50 text-rose-600 shrink-0 mt-0.5">
-                  <FileText className="w-5 h-5" />
-                </div>
-                <div className="min-w-0">
-                  {editingFileId === file.id ? (
-                    <div className="flex items-center gap-2 mb-1">
-                      <input
-                        type="text"
-                        value={editName}
-                        onChange={(e) => setEditName(e.target.value)}
-                        className="px-2 py-1 text-xs border border-rose-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-rose-500"
-                        autoFocus
-                      />
-                      <button
-                        onClick={() => handleSaveRename(file.id)}
-                        className="p-1 text-emerald-600 hover:bg-emerald-50 rounded"
-                      >
-                        <Check className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => setEditingFileId(null)}
-                        className="p-1 text-slate-400 hover:bg-slate-100 rounded"
-                      >
-                        <X className="w-4 h-4" />
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs sm:text-sm font-bold text-slate-900 truncate">
-                        {file.name}
-                      </span>
-                      {category !== 'trash' && (
-                        <button
-                          onClick={() => handleStartRename(file)}
-                          className="text-slate-400 hover:text-slate-700 p-0.5"
-                          title="Rename file"
-                        >
-                          <Edit2 className="w-3.5 h-3.5" />
-                        </button>
-                      )}
-                    </div>
-                  )}
+          {files.map((file) => {
+            const shareUrl = `${window.location.origin}/?token=${file.shareToken}`;
+            const isExpanded = expandedFileId === file.id;
+            const isCopiedLink = copiedKey === `link-${file.id}`;
+            const isCopiedCode = copiedKey === `code-${file.id}`;
+            const isCopiedKey = copiedKey === `key-${file.id}`;
+            const isConfirming = confirmRevokeId === file.id;
+            const isRevoking = revokingId === file.id;
 
-                  <div className="text-[11px] text-slate-400 flex flex-wrap items-center gap-2 mt-1">
-                    <span className="font-mono">{formatBytes(file.size)}</span>
-                    <span>•</span>
-                    <span>{new Date(file.createdAt).toLocaleDateString()}</span>
-                    <span>•</span>
-                    <span className="flex items-center gap-1">
-                      <Clock className="w-3 h-3 text-slate-400" />
-                      {file.isRevoked ? (
-                        <span className="text-rose-600 font-semibold">Revoked</span>
-                      ) : file.isExpired ? (
-                        <span className="text-slate-500">Expired</span>
+            return (
+              <div key={file.id} className="p-4 sm:p-5 hover:bg-slate-50/60 transition-colors">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  {/* File Info */}
+                  <div className="flex items-start gap-3 min-w-0">
+                    <div className="p-2.5 rounded-2xl bg-rose-50 text-rose-600 shrink-0 mt-0.5">
+                      <FileText className="w-5 h-5" />
+                    </div>
+                    <div className="min-w-0">
+                      {editingFileId === file.id ? (
+                        <div className="flex items-center gap-2 mb-1">
+                          <input
+                            type="text"
+                            value={editName}
+                            onChange={(e) => setEditName(e.target.value)}
+                            className="px-2 py-1 text-xs border border-rose-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-rose-500"
+                            autoFocus
+                          />
+                          <button
+                            onClick={() => handleSaveRename(file.id)}
+                            className="p-1 text-emerald-600 hover:bg-emerald-50 rounded"
+                          >
+                            <Check className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => setEditingFileId(null)}
+                            className="p-1 text-slate-400 hover:bg-slate-100 rounded"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
                       ) : (
-                        <span className="text-emerald-600 font-semibold">Active</span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs sm:text-sm font-bold text-slate-900 truncate">
+                            {file.name}
+                          </span>
+                          {category !== 'trash' && (
+                            <button
+                              onClick={() => handleStartRename(file)}
+                              className="text-slate-400 hover:text-slate-700 p-0.5"
+                              title="Rename file"
+                            >
+                              <Edit2 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
                       )}
-                    </span>
-                    {file.downloadCount > 0 && (
-                      <>
+
+                      <div className="text-[11px] text-slate-400 flex flex-wrap items-center gap-2 mt-1">
+                        <span className="font-mono">{formatBytes(file.size)}</span>
                         <span>•</span>
-                        <span>{file.downloadCount} download(s)</span>
+                        <span>{new Date(file.createdAt).toLocaleDateString()}</span>
+                        <span>•</span>
+                        <span className="flex items-center gap-1">
+                          <Clock className="w-3 h-3 text-slate-400" />
+                          {file.isRevoked ? (
+                            <span className="text-rose-600 font-semibold">Revoked</span>
+                          ) : file.isExpired ? (
+                            <span className="text-slate-500">Expired</span>
+                          ) : (
+                            <span className="text-emerald-600 font-semibold">Active</span>
+                          )}
+                        </span>
+                        {file.sixCode && (
+                          <>
+                            <span>•</span>
+                            <span className="font-mono text-slate-700 bg-slate-100 px-1.5 py-0.5 rounded text-[10px]">
+                              Code: {file.sixCode}
+                            </span>
+                          </>
+                        )}
+                        {file.downloadCount > 0 && (
+                          <>
+                            <span>•</span>
+                            <span>{file.downloadCount} download(s)</span>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Actions Bar */}
+                  <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
+                    {category === 'trash' ? (
+                      <>
+                        <button
+                          onClick={() => handleRestore(file.id)}
+                          className="py-1.5 px-3 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-xs font-semibold rounded-xl flex items-center gap-1 transition-colors"
+                        >
+                          <RotateCcw className="w-3.5 h-3.5" />
+                          Restore
+                        </button>
+                        <button
+                          onClick={() => handleDelete(file.id, true)}
+                          className="py-1.5 px-3 bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-semibold rounded-xl flex items-center gap-1 transition-colors"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                          Delete Forever
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        {/* Toggle Share & Revoke details */}
+                        <button
+                          type="button"
+                          onClick={() => setExpandedFileId(isExpanded ? null : file.id)}
+                          className={`py-1.5 px-3 text-xs font-semibold rounded-xl flex items-center gap-1 transition-all border ${
+                            isExpanded
+                              ? 'bg-rose-50 border-rose-200 text-rose-700'
+                              : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
+                          }`}
+                          title="View share link, QR code, and secret revocation key"
+                        >
+                          <KeyRound className="w-3.5 h-3.5 text-rose-600" />
+                          <span>Share & Key</span>
+                          {isExpanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                        </button>
+
+                        <a
+                          href={getSingleFileDownloadUrl(file.shareToken, file.id)}
+                          download={file.name}
+                          className="py-1.5 px-3 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-xl flex items-center gap-1 transition-colors"
+                        >
+                          <Download className="w-3.5 h-3.5" />
+                          Download
+                        </a>
+
+                        <button
+                          onClick={() => handleDelete(file.id, false)}
+                          className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-colors"
+                          title="Move to trash"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
                       </>
                     )}
                   </div>
                 </div>
-              </div>
 
-              {/* Actions */}
-              <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
-                {category === 'trash' ? (
-                  <>
-                    <button
-                      onClick={() => handleRestore(file.id)}
-                      className="py-1.5 px-3 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-xs font-semibold rounded-xl flex items-center gap-1 transition-colors"
-                    >
-                      <RotateCcw className="w-3.5 h-3.5" />
-                      Restore
-                    </button>
-                    <button
-                      onClick={() => handleDelete(file.id, true)}
-                      className="py-1.5 px-3 bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-semibold rounded-xl flex items-center gap-1 transition-colors"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                      Delete Forever
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <a
-                      href={getSingleFileDownloadUrl(file.shareToken, file.id)}
-                      download={file.name}
-                      className="py-1.5 px-3 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-xl flex items-center gap-1 transition-colors"
-                    >
-                      <Download className="w-3.5 h-3.5" />
-                      Download
-                    </a>
-                    <button
-                      onClick={() => handleDelete(file.id, false)}
-                      className="py-1.5 px-3 text-slate-400 hover:text-rose-600 hover:bg-rose-50 text-xs font-semibold rounded-xl transition-colors"
-                      title="Move to trash"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
-                  </>
+                {/* Expandable Share & Revocation Details */}
+                {isExpanded && category !== 'trash' && (
+                  <div className="mt-3.5 p-3.5 bg-slate-50 rounded-2xl border border-slate-200/80 space-y-3 animate-fade-in">
+                    <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                      Share & Revocation Controls
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-2 text-xs">
+                      {/* Public Share Link */}
+                      <button
+                        type="button"
+                        onClick={() => handleCopy(shareUrl, `link-${file.id}`)}
+                        className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-semibold transition-all border ${
+                          isCopiedLink
+                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                            : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                        }`}
+                      >
+                        {isCopiedLink ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <LinkIcon className="w-3.5 h-3.5 text-slate-500" />}
+                        <span>{isCopiedLink ? 'Link Copied!' : 'Copy Share Link'}</span>
+                      </button>
+
+                      {/* 6-Digit Code */}
+                      {file.sixCode && (
+                        <button
+                          type="button"
+                          onClick={() => handleCopy(file.sixCode, `code-${file.id}`)}
+                          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-mono font-semibold transition-all border ${
+                            isCopiedCode
+                              ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                              : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                          }`}
+                        >
+                          {isCopiedCode ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <KeyRound className="w-3.5 h-3.5 text-rose-500" />}
+                          <span>{isCopiedCode ? 'Code Copied!' : `Code: ${file.sixCode}`}</span>
+                        </button>
+                      )}
+
+                      {/* QR Code */}
+                      {onShowQR && (
+                        <button
+                          type="button"
+                          onClick={() => onShowQR(shareUrl)}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 hover:bg-slate-100 text-slate-700 rounded-xl font-semibold transition-all"
+                        >
+                          <QrCode className="w-3.5 h-3.5 text-slate-600" />
+                          <span>Show QR Code</span>
+                        </button>
+                      )}
+
+                      {/* Secret Revocation Key */}
+                      {file.revokeToken && (
+                        <button
+                          type="button"
+                          onClick={() => handleCopy(file.revokeToken, `key-${file.id}`)}
+                          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-semibold transition-all border ${
+                            isCopiedKey
+                              ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                              : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                          }`}
+                          title={file.revokeToken}
+                        >
+                          {isCopiedKey ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <ShieldAlert className="w-3.5 h-3.5 text-amber-500" />}
+                          <span>{isCopiedKey ? 'Revocation Key Copied!' : 'Copy Revoke Key'}</span>
+                        </button>
+                      )}
+
+                      {/* Revoke and Delete Now */}
+                      {file.revokeToken && !file.isRevoked && (
+                        <div className="ml-auto">
+                          {isConfirming ? (
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-[11px] text-rose-700 font-bold">Delete now?</span>
+                              <button
+                                type="button"
+                                disabled={isRevoking}
+                                onClick={() => handleExecuteRevoke(file.shareToken, file.revokeToken, file.id)}
+                                className="px-2.5 py-1 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-[11px] font-bold"
+                              >
+                                {isRevoking ? 'Deleting...' : 'Confirm'}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setConfirmRevokeId(null)}
+                                className="px-2 py-1 text-slate-500 hover:text-slate-700 text-[11px]"
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => setConfirmRevokeId(file.id)}
+                              className="text-rose-600 hover:text-rose-700 text-xs font-semibold px-2.5 py-1 hover:bg-rose-50 rounded-lg transition-colors flex items-center gap-1"
+                            >
+                              <ShieldAlert className="w-3.5 h-3.5" />
+                              <span>Revoke & Shred Files</span>
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 )}
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

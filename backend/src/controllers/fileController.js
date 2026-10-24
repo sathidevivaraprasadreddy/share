@@ -45,7 +45,7 @@ export async function getMyFiles(req, res, next) {
     const [files] = await db.query(
       `SELECT f.id, f.session_id, f.original_name, f.stored_name, f.file_size, f.mime_type, 
               f.sha256_hash, f.is_deleted, f.created_at,
-              s.share_token, s.six_code, s.expires_at, s.is_revoked, s.download_count
+              s.share_token, s.revoke_token, s.six_code, s.expires_at, s.is_revoked, s.download_count
        FROM share_files f
        JOIN share_sessions s ON f.session_id = s.id
        WHERE f.user_id = ? AND ${isDeletedFilter} ${mimeCondition} ${searchCondition}
@@ -65,6 +65,7 @@ export async function getMyFiles(req, res, next) {
         isDeleted: Boolean(f.is_deleted),
         createdAt: f.created_at,
         shareToken: f.share_token,
+        revokeToken: f.revoke_token,
         sixCode: f.six_code,
         expiresAt: f.expires_at,
         isExpired,
