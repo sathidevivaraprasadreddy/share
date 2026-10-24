@@ -3,12 +3,10 @@ import {
   Send,
   Download,
   Wifi,
-  Lock,
   Clock,
   UserCheck,
   Users,
   Shield,
-  FileCheck,
   AlertCircle,
   ArrowRight,
   Loader2,
@@ -49,9 +47,6 @@ export default function TransferDashboard({
   const [files, setFiles] = useState([]);
   const [maxFileSizeMb, setMaxFileSizeMb] = useState(100);
   const [expiryHours, setExpiryHours] = useState(24);
-  const [password, setPassword] = useState('');
-  const [maxDownloads, setMaxDownloads] = useState('');
-  const [note, setNote] = useState('');
 
   // Direct share specific state
   const [recipientsInput, setRecipientsInput] = useState('');
@@ -163,16 +158,14 @@ export default function TransferDashboard({
         const result = await createDirectShare(
           files,
           rawRecipients,
-          { expiryHours, password: password || undefined, note: note || undefined },
+          { expiryHours },
           (progress) => setUploadProgress(progress)
         );
 
         if (result.success) {
           onSuccess(`Successfully sent files to ${result.recipients.join(', ')}!`);
           setFiles([]);
-          setPassword('');
           setRecipientsInput('');
-          setNote('');
           onShareCompleted({
             ...result,
             directShare: true
@@ -181,10 +174,7 @@ export default function TransferDashboard({
       } else {
         // Standard Link / 6-Digit Code / Group Share
         const options = {
-          expiryHours,
-          password: password.trim() || undefined,
-          maxDownloads: maxDownloads ? parseInt(maxDownloads, 10) : undefined,
-          note: note.trim() || undefined
+          expiryHours
         };
 
         const result = await uploadFiles(files, options, (progress) => {
@@ -213,9 +203,6 @@ export default function TransferDashboard({
           }
 
           setFiles([]);
-          setPassword('');
-          setMaxDownloads('');
-          setNote('');
           playSuccessChime();
           onShareCompleted(result);
         } else {
@@ -472,74 +459,6 @@ export default function TransferDashboard({
                 expiryHours={expiryHours}
                 setExpiryHours={setExpiryHours}
               />
-
-              {/* Advanced Security Controls (Password, Max Downloads, Note) */}
-              <div className="bg-white rounded-2xl border border-slate-200/80 p-4 sm:p-5 shadow-xs space-y-3">
-                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
-                  <Shield className="w-3.5 h-3.5 text-slate-400" />
-                  <span>Transfer Protection & Options</span>
-                </h4>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-xs font-medium text-slate-700 mb-1 flex items-center gap-1">
-                      <Lock className="w-3.5 h-3.5 text-slate-400" />
-                      <span>Optional Password Protection</span>
-                    </label>
-                    <input
-                      type="password"
-                      placeholder="Leave blank for none"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      disabled={uploading}
-                      className="w-full text-xs px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-rose-500/20"
-                    />
-                  </div>
-
-                  <div>
-                    <div className="flex items-center justify-between mb-1">
-                      <label className="text-xs font-medium text-slate-700 flex items-center gap-1">
-                        <FileCheck className="w-3.5 h-3.5 text-slate-400" />
-                        <span>Max Downloads</span>
-                      </label>
-                      <button
-                        type="button"
-                        onClick={() => setMaxDownloads(maxDownloads === '1' ? '' : '1')}
-                        className={`text-[10px] font-bold px-2 py-0.5 rounded-full transition-all ${
-                          maxDownloads === '1'
-                            ? 'bg-rose-600 text-white shadow-xs'
-                            : 'bg-rose-50 text-rose-600 hover:bg-rose-100'
-                        }`}
-                      >
-                        {maxDownloads === '1' ? '🔥 Self-Destruct ON' : '🔥 1-Time Self-Destruct'}
-                      </button>
-                    </div>
-                    <input
-                      type="number"
-                      min="0"
-                      placeholder="e.g. 1 (self-destruct on 1st download)"
-                      value={maxDownloads}
-                      onChange={(e) => setMaxDownloads(e.target.value)}
-                      disabled={uploading}
-                      className="w-full text-xs px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-rose-500/20"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-medium text-slate-700 mb-1">
-                    Optional Message / Note for Receiver
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="e.g. Here are the project blueprints"
-                    value={note}
-                    onChange={(e) => setNote(e.target.value)}
-                    disabled={uploading}
-                    className="w-full text-xs px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-rose-500/20"
-                  />
-                </div>
-              </div>
             </div>
           )}
 
