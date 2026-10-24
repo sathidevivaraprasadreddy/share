@@ -85,10 +85,10 @@ export default function RevokeModal({ isOpen, onClose, onSuccess }) {
             <ShieldAlert className="w-6 h-6" />
           </div>
           <h2 className="text-xl sm:text-2xl font-bold text-slate-900">
-            Emergency File Revocation
+            Delete Files Early
           </h2>
           <p className="text-xs text-slate-500 mt-1">
-            Delete files early from server storage using your secret owner key.
+            Delete your shared files early using your secret delete key.
           </p>
         </div>
 
@@ -127,7 +127,7 @@ export default function RevokeModal({ isOpen, onClose, onSuccess }) {
             <div className="p-3.5 bg-amber-50/70 border border-amber-200/80 rounded-2xl flex items-start gap-2.5">
               <HelpCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
               <p className="text-[11px] text-amber-900 leading-relaxed">
-                <strong>Why is this key needed?</strong> If you closed your browser after uploading as a guest, your secret Revocation Key proves you are the owner so you can delete your files from our servers anytime.
+                <strong>Why is this key needed?</strong> If you closed your browser after uploading, your secret delete key proves you own the files so you can remove them anytime.
               </p>
             </div>
 
@@ -147,15 +147,15 @@ export default function RevokeModal({ isOpen, onClose, onSuccess }) {
               />
             </div>
 
-            {/* Input 2: Secret Revocation Key */}
+            {/* Input 2: Secret Delete Key */}
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center gap-1.5">
                 <KeyRound className="w-3.5 h-3.5 text-slate-400" />
-                <span>Secret Revocation Key</span>
+                <span>Secret Delete Key</span>
               </label>
               <input
                 type="text"
-                placeholder="e.g. 04797ed21ef4c5615bb8a55ccdc9e003..."
+                placeholder="Paste secret delete key here"
                 value={revokeKey}
                 onChange={(e) => setRevokeKey(e.target.value)}
                 disabled={loading}
@@ -177,7 +177,7 @@ export default function RevokeModal({ isOpen, onClose, onSuccess }) {
               ) : (
                 <>
                   <Trash2 className="w-4 h-4" />
-                  <span>Permanently Delete & Revoke Files</span>
+                  <span>Delete Files Permanently Now</span>
                 </>
               )}
             </button>

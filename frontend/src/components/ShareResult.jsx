@@ -67,8 +67,8 @@ export default function ShareResult({
     : null;
 
   const shareText = result.sixCode
-    ? `Hey! I shared ${result.fileCount} file(s) with you via QuickShare.\n🔢 6-Digit Transfer Code: ${result.sixCode}\n🔗 Download Link: ${shareUrl}\n⏳ Auto-expires safely. ₹0 Free.`
-    : `Hey! I shared ${result.fileCount} file(s) with you via QuickShare.\n🔗 Download Link: ${shareUrl}\n⏳ Auto-expires safely. ₹0 Free.`;
+    ? `Hey! I shared ${result.fileCount} file(s) with you via QuickShare.\n🔢 6-Digit Transfer Code: ${result.sixCode}\n🔗 Download Link: ${shareUrl}\n⏳ Auto-deletes safely after expiry.`
+    : `Hey! I shared ${result.fileCount} file(s) with you via QuickShare.\n🔗 Download Link: ${shareUrl}\n⏳ Auto-deletes safely after expiry.`;
 
   const whatsappUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(shareText)}`;
   const telegramUrl = `https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(
@@ -283,13 +283,13 @@ export default function ShareResult({
           <ShieldAlert className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
           <div className="flex-1">
             <h4 className="text-xs font-bold text-amber-900 uppercase tracking-wide flex items-center gap-1.5">
-              <span>Owner Management & Revocation</span>
+              <span>Delete Files Early (Secret Key)</span>
             </h4>
             <p className="text-xs text-amber-800/90 mt-1">
-              Want to delete these files early? Only you hold the secret 192-bit Revocation Key below.
+              Want to delete these files early? Only you hold this secret delete key.
             </p>
             <p className="text-[11px] text-amber-700/80 mt-0.5">
-              💡 <strong>Why copy this key?</strong> If you close this browser, you can return anytime on any device, click <strong>"Revoke with Key"</strong> in the top menu, and paste this key to instantly shred your files from our servers.
+              💡 <strong>Why keep this key?</strong> If you close this browser, you can return anytime, click <strong>"Delete with Key"</strong> at the top, and paste this key to remove your files immediately.
             </p>
 
             <div className="mt-2.5 flex items-center gap-2">
@@ -299,7 +299,7 @@ export default function ShareResult({
               <button
                 onClick={handleCopyRevokeToken}
                 className="text-xs text-amber-700 hover:text-amber-900 px-2 py-1 bg-amber-100 hover:bg-amber-200 rounded-lg transition-colors flex items-center gap-1 font-medium"
-                title="Copy Revoke Token"
+                title="Copy Delete Key"
               >
                 {copiedToken ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
                 <span>{copiedToken ? 'Copied' : 'Copy'}</span>
@@ -311,7 +311,7 @@ export default function ShareResult({
                 onClick={() => setShowRevokeConfirm(true)}
                 className="mt-3 text-xs font-semibold text-rose-600 hover:text-rose-700 hover:underline"
               >
-                Revoke this link & delete files now
+                Delete files and link now
               </button>
             ) : (
               <div className="mt-3 p-3 bg-white border border-rose-200 rounded-xl">

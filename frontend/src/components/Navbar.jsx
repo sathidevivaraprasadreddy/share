@@ -70,12 +70,9 @@ export default function Navbar({
                 <span className="font-extrabold text-lg text-slate-900 tracking-tight">
                   QuickShare
                 </span>
-                <span className="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-rose-50 text-rose-600 border border-rose-200/60">
-                  ₹0 Free
-                </span>
               </div>
-              <p className="text-[11px] text-slate-400 hidden sm:block">
-                Secure & Ephemeral Transfer
+              <p className="text-[11px] text-slate-500 hidden sm:block">
+                Fast & Simple File Sharing
               </p>
             </div>
           </button>
@@ -139,14 +136,14 @@ export default function Navbar({
             </span>
           </div>
 
-          {/* Emergency Revoke Key Button */}
+          {/* Emergency Delete Key Button */}
           <button
             onClick={onOpenRevoke}
             className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-amber-200 bg-amber-50/80 hover:bg-amber-100 text-amber-800 text-xs font-semibold transition-all"
-            title="Delete files early using your secret Revocation Key"
+            title="Delete files early using your secret key"
           >
             <ShieldAlert className="w-3.5 h-3.5 text-amber-600" />
-            <span>Revoke with Key</span>
+            <span>Delete with Key</span>
           </button>
 
           {/* Notifications (if logged in) */}

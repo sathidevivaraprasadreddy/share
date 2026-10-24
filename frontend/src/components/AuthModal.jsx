@@ -152,7 +152,7 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }) {
             {isRegister ? 'Create Free Account' : 'Welcome to QuickShare'}
           </h2>
           <p className="text-xs text-slate-500 mt-1">
-            Access your saved files, recipient inboxes, and collaboration groups for ₹0.
+            Access your saved files, sent links, and study groups easily.
           </p>
         </div>
 

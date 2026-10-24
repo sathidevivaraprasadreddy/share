@@ -427,7 +427,7 @@ export default function MyFilesView({
                               className="text-rose-600 hover:text-rose-700 text-xs font-semibold px-2 py-1 hover:bg-rose-50 rounded-lg transition-colors flex items-center gap-1"
                             >
                               <ShieldAlert className="w-3.5 h-3.5" />
-                              <span>Revoke & Shred</span>
+                              <span>Delete Files</span>
                             </button>
                           )}
                         </div>
@@ -818,7 +818,7 @@ export default function MyFilesView({
                               className="text-rose-600 hover:text-rose-700 text-xs font-semibold px-2.5 py-1 hover:bg-rose-50 rounded-lg transition-colors flex items-center gap-1"
                             >
                               <ShieldAlert className="w-3.5 h-3.5" />
-                              <span>Revoke & Shred Files</span>
+                              <span>Delete Files Now</span>
                             </button>
                           )}
                         </div>

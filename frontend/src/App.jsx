@@ -13,7 +13,7 @@ import GroupsView from './components/GroupsView';
 import ActivityView from './components/ActivityView';
 import AdminControlCenter from './components/AdminControlCenter';
 import { checkHealth, getMe, logoutUser, revokeSession } from './services/api';
-import { AlertCircle, CheckCircle, ShieldCheck, Heart } from 'lucide-react';
+import { AlertCircle, CheckCircle, ShieldCheck } from 'lucide-react';
 
 export default function App() {
   const [currentView, setCurrentView] = useState('transfer'); // 'transfer' | 'inbox' | 'my-files' | 'groups' | 'activity'
@@ -372,23 +372,23 @@ export default function App() {
         }}
       />
 
-      {/* Footer */}
-      <footer className="py-6 border-t border-slate-200/80 bg-white/70 backdrop-blur-xs text-center text-xs text-slate-400">
+      {/* Footer with simple, easy to understand text */}
+      <footer className="py-6 border-t border-slate-200/80 bg-white/70 backdrop-blur-xs text-center text-xs text-slate-500">
         <div className="max-w-5xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-3">
           <div className="flex items-center gap-2">
-            <span className="font-semibold text-slate-700">QuickShare</span>
+            <span className="font-bold text-slate-800">QuickShare</span>
             <span>•</span>
-            <span>100% Free & Open-Source Ephemeral File Sharing</span>
+            <span>Simple, Fast & Free File Sharing</span>
           </div>
 
-          <div className="flex items-center gap-4 text-[11px] text-slate-500">
+          <div className="flex items-center gap-4 text-xs text-slate-500">
             <span className="inline-flex items-center gap-1">
               <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-              <span>Zero-Log Storage Purge</span>
+              <span>Files Auto-Delete Safely</span>
             </span>
             <span className="inline-flex items-center gap-1">
-              <Heart className="w-3.5 h-3.5 text-rose-500 fill-rose-500" />
-              <span>Self-Hosted & Cloud Ready</span>
+              <CheckCircle className="w-3.5 h-3.5 text-rose-500" />
+              <span>100% Free to Use</span>
             </span>
           </div>
         </div>
