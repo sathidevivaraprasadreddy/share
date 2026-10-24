@@ -39,7 +39,8 @@ export const downloadLimiter = rateLimit({
 // Strict rate limiter for administrator authentication attempts (locks out after multiple attempts)
 export const adminLoginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: process.env.NODE_ENV === 'test' ? 100 : 15, // 15 attempts per 15 min in dev/prod, 100 in test
+  max: process.env.NODE_ENV === 'production' ? 10 : 50, // 50 attempts in development, 10 in production
+  skipSuccessfulRequests: true, // Successful administrator sign-ins never count toward lockout limit
   standardHeaders: true,
   legacyHeaders: false,
   message: {
