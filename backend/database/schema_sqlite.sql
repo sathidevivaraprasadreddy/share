@@ -140,6 +140,20 @@ CREATE TABLE IF NOT EXISTS group_shares (
 CREATE INDEX IF NOT EXISTS idx_gshare_group ON group_shares (group_id);
 CREATE INDEX IF NOT EXISTS idx_gshare_session ON group_shares (session_id);
 
+-- Table: group_messages (WhatsApp-style group chat messages)
+CREATE TABLE IF NOT EXISTS group_messages (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  group_id INTEGER NOT NULL,
+  user_id INTEGER NOT NULL,
+  message TEXT NOT NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (group_id) REFERENCES groups (id) ON DELETE CASCADE,
+  FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS idx_group_messages_group ON group_messages (group_id);
+CREATE INDEX IF NOT EXISTS idx_group_messages_user ON group_messages (user_id);
+CREATE INDEX IF NOT EXISTS idx_group_messages_created ON group_messages (created_at);
+
 -- Table: activity_logs
 CREATE TABLE IF NOT EXISTS activity_logs (
   id INTEGER PRIMARY KEY AUTOINCREMENT,

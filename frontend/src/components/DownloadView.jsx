@@ -17,7 +17,10 @@ import {
   ArrowLeft,
   CheckCircle2,
   MessageSquare,
-  Flame
+  Flame,
+  Eye,
+  Copy,
+  Check
 } from 'lucide-react';
 import {
   getSession,
@@ -26,6 +29,7 @@ import {
 } from '../services/api';
 import { formatFileSize, formatTimeRemaining } from '../utils/formatters';
 import { playSuccessChime, playNotificationPing } from '../utils/audio';
+import FilePreviewModal from './FilePreviewModal';
 
 function getFileIcon(filename) {
   const ext = filename.split('.').pop()?.toLowerCase();
@@ -59,6 +63,17 @@ export default function DownloadView({ token, onBackToUpload }) {
   const [passwordError, setPasswordError] = useState(null);
   const [activePassword, setActivePassword] = useState(null);
   const [countdown, setCountdown] = useState('');
+  const [previewingFile, setPreviewingFile] = useState(null);
+  const [copiedNote, setCopiedNote] = useState(false);
+
+  const handleCopyNote = async () => {
+    if (!session?.note) return;
+    try {
+      await navigator.clipboard.writeText(session.note);
+      setCopiedNote(true);
+      setTimeout(() => setCopiedNote(false), 2000);
+    } catch {}
+  };
 
   // Live ticking countdown timer
   useEffect(() => {
@@ -297,18 +312,26 @@ export default function DownloadView({ token, onBackToUpload }) {
         )}
       </div>
 
-      {/* Message from Sender */}
+      {/* Message / Shared Text Note from Sender */}
       {session.note && (
-        <div className="p-4 bg-amber-50/70 border border-amber-200/80 rounded-2xl flex items-start gap-3">
-          <MessageSquare className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
-          <div>
-            <span className="text-[11px] font-bold uppercase tracking-wider text-amber-900 block mb-0.5">
-              Message from Sender:
-            </span>
-            <p className="text-xs sm:text-sm text-amber-950 font-medium whitespace-pre-wrap">
-              {session.note}
-            </p>
+        <div className="p-4 bg-amber-50/80 dark:bg-amber-950/40 border border-amber-200/80 dark:border-amber-800/60 rounded-2xl space-y-2">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 text-amber-900 dark:text-amber-200 font-bold text-xs uppercase tracking-wider">
+              <MessageSquare className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
+              <span>Note / Shared Message:</span>
+            </div>
+            <button
+              onClick={handleCopyNote}
+              className="px-2.5 py-1 bg-amber-100 hover:bg-amber-200 dark:bg-amber-900/60 dark:hover:bg-amber-800/80 text-amber-900 dark:text-amber-200 rounded-lg text-xs font-semibold flex items-center gap-1 transition-colors"
+              title="Copy note text"
+            >
+              {copiedNote ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+              <span>{copiedNote ? 'Copied!' : 'Copy Text'}</span>
+            </button>
           </div>
+          <p className="text-xs sm:text-sm text-slate-800 dark:text-slate-200 font-medium whitespace-pre-wrap leading-relaxed bg-white/70 dark:bg-slate-900/70 p-3 rounded-xl border border-amber-100 dark:border-amber-900/40">
+            {session.note}
+          </p>
         </div>
       )}
 
@@ -381,6 +404,19 @@ export default function DownloadView({ token, onBackToUpload }) {
               </div>
 
               <div className="flex items-center gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setPreviewingFile({
+                    file,
+                    downloadUrl: getSingleFileDownloadUrl(token, file.id, activePassword)
+                  })}
+                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-semibold transition-colors"
+                  title="Look at file before downloading"
+                >
+                  <Eye className="w-3.5 h-3.5 text-slate-600 dark:text-slate-300" />
+                  <span>Preview</span>
+                </button>
+
                 <a
                   href={getSingleFileDownloadUrl(token, file.id, activePassword)}
                   download={file.name}
@@ -410,6 +446,15 @@ export default function DownloadView({ token, onBackToUpload }) {
           Powered by QuickShare
         </span>
       </div>
+
+      {/* In-Browser File Preview Modal */}
+      {previewingFile && (
+        <FilePreviewModal
+          file={previewingFile.file}
+          downloadUrl={previewingFile.downloadUrl}
+          onClose={() => setPreviewingFile(null)}
+        />
+      )}
     </div>
   );
 }

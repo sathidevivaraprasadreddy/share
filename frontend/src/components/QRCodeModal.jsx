@@ -2,7 +2,7 @@ import React, { useRef } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import { X, Smartphone, ExternalLink, Download } from 'lucide-react';
 
-export default function QRCodeModal({ url, onClose }) {
+export default function QRCodeModal({ url, title, description, onClose }) {
   const qrRef = useRef(null);
   if (!url) return null;
 
@@ -47,10 +47,10 @@ export default function QRCodeModal({ url, onClose }) {
         </div>
 
         <h3 className="text-lg font-bold text-slate-900 mb-1">
-          Scan to Download
+          {title || 'Scan to Open'}
         </h3>
         <p className="text-xs text-slate-500 mb-5 px-2">
-          Point your phone camera at this QR code to open the download link instantly.
+          {description || 'Point your phone camera at this QR code to open the link instantly.'}
         </p>
 
         {/* QR Code Container */}

@@ -46,7 +46,10 @@ import {
   deleteGroup,
   leaveGroup,
   getGroupByInvite,
-  joinGroupByInvite
+  joinGroupByInvite,
+  getGroupMessages,
+  sendGroupMessage,
+  deleteGroupMessage
 } from '../controllers/groupController.js';
 import {
   getActivityTimeline,
@@ -148,6 +151,9 @@ router.post('/groups/:id/members', authenticateRequired, addMember);
 router.delete('/groups/:id/members/:userId', authenticateRequired, removeMember);
 router.post('/groups/:id/leave', authenticateRequired, leaveGroup);
 router.post('/groups/:id/share', authenticateRequired, shareWithGroup);
+router.get('/groups/:id/messages', authenticateRequired, getGroupMessages);
+router.post('/groups/:id/messages', authenticateRequired, sendGroupMessage);
+router.delete('/groups/:id/messages/:messageId', authenticateRequired, deleteGroupMessage);
 
 // ==========================================
 // 7. Activity Timeline & Notifications

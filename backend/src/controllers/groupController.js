@@ -543,3 +543,146 @@ export async function joinGroupByInvite(req, res, next) {
   }
 }
 
+/**
+ * Get all messages for a group (WhatsApp-style group chat)
+ */
+export async function getGroupMessages(req, res, next) {
+  try {
+    const groupId = parseInt(req.params.id, 10);
+    const userId = req.user.id;
+    const db = getDbPool();
+
+    // Verify membership
+    const [membership] = await db.query(
+      `SELECT role FROM group_members WHERE group_id = ? AND user_id = ?`,
+      [groupId, userId]
+    );
+
+    if (membership.length === 0 && !req.user.isAdmin) {
+      return res.status(403).json({ success: false, error: 'You are not a member of this group.' });
+    }
+
+    const myRole = membership.length > 0 ? membership[0].role : (req.user.isAdmin ? 'admin' : 'member');
+
+    const [messages] = await db.query(
+      `SELECT gm.id, gm.group_id, gm.user_id, gm.message, gm.created_at,
+              u.username AS sender_username, u.display_name AS sender_display_name, u.avatar_color
+       FROM group_messages gm
+       JOIN users u ON gm.user_id = u.id
+       WHERE gm.group_id = ?
+       ORDER BY gm.created_at ASC, gm.id ASC
+       LIMIT 300`,
+      [groupId]
+    );
+
+    return res.json({
+      success: true,
+      messages: messages.map((m) => ({
+        id: m.id,
+        groupId: m.group_id,
+        userId: m.user_id,
+        message: m.message,
+        createdAt: m.created_at,
+        senderUsername: m.sender_username,
+        senderDisplayName: m.sender_display_name || m.sender_username,
+        avatarColor: m.avatar_color || '#10b981',
+        isMe: m.user_id === userId,
+        canDelete: m.user_id === userId || myRole === 'owner' || req.user.isAdmin
+      }))
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
+ * Send a message in a group (WhatsApp-style group chat)
+ */
+export async function sendGroupMessage(req, res, next) {
+  try {
+    const groupId = parseInt(req.params.id, 10);
+    const userId = req.user.id;
+    const { message } = req.body;
+
+    if (!message || typeof message !== 'string' || message.trim().length === 0) {
+      return res.status(400).json({ success: false, error: 'Message cannot be empty.' });
+    }
+
+    const cleanMessage = message.trim().substring(0, 3000);
+    const db = getDbPool();
+
+    // Verify membership
+    const [membership] = await db.query(
+      `SELECT role FROM group_members WHERE group_id = ? AND user_id = ?`,
+      [groupId, userId]
+    );
+
+    if (membership.length === 0 && !req.user.isAdmin) {
+      return res.status(403).json({ success: false, error: 'You must be a member of this group to send messages.' });
+    }
+
+    const [result] = await db.query(
+      `INSERT INTO group_messages (group_id, user_id, message) VALUES (?, ?, ?)`,
+      [groupId, userId, cleanMessage]
+    );
+
+    const messageId = result.insertId;
+
+    return res.status(201).json({
+      success: true,
+      message: {
+        id: messageId,
+        groupId,
+        userId,
+        message: cleanMessage,
+        createdAt: new Date().toISOString(),
+        senderUsername: req.user.username,
+        senderDisplayName: req.user.displayName || req.user.username,
+        avatarColor: req.user.avatarColor || '#10b981',
+        isMe: true,
+        canDelete: true
+      }
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
+ * Delete a message in a group
+ */
+export async function deleteGroupMessage(req, res, next) {
+  try {
+    const groupId = parseInt(req.params.id, 10);
+    const messageId = parseInt(req.params.messageId, 10);
+    const userId = req.user.id;
+    const db = getDbPool();
+
+    const [rows] = await db.query(
+      `SELECT gm.id, gm.user_id, gm.group_id, g.owner_user_id
+       FROM group_messages gm
+       JOIN groups g ON gm.group_id = g.id
+       WHERE gm.id = ? AND gm.group_id = ?`,
+      [messageId, groupId]
+    );
+
+    if (rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'Message not found.' });
+    }
+
+    const msg = rows[0];
+    if (msg.user_id !== userId && msg.owner_user_id !== userId && !req.user.isAdmin) {
+      return res.status(403).json({ success: false, error: 'You do not have permission to delete this message.' });
+    }
+
+    await db.query(`DELETE FROM group_messages WHERE id = ?`, [messageId]);
+
+    return res.json({
+      success: true,
+      message: 'Message deleted successfully.'
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+

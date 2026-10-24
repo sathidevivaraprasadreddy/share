@@ -69,6 +69,23 @@ class SqliteAdapter {
         this.db.exec("UPDATE groups SET invite_code = lower(hex(randomblob(8))) WHERE invite_code IS NULL OR invite_code = '';");
       } catch {}
 
+      // Ensure group_messages table exists
+      try {
+        this.db.exec(`
+          CREATE TABLE IF NOT EXISTS group_messages (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            group_id INTEGER NOT NULL,
+            user_id INTEGER NOT NULL,
+            message TEXT NOT NULL,
+            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (group_id) REFERENCES groups (id) ON DELETE CASCADE,
+            FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+          );
+          CREATE INDEX IF NOT EXISTS idx_group_messages_group ON group_messages (group_id);
+          CREATE INDEX IF NOT EXISTS idx_group_messages_user ON group_messages (user_id);
+        `);
+      } catch {}
+
       // 2. Execute full schema (creates tables and indexes)
       const schemaPath = path.resolve(__dirname, '../../database/schema_sqlite.sql');
       if (fs.existsSync(schemaPath)) {

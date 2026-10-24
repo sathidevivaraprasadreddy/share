@@ -23,6 +23,7 @@ export default function WebRTCTransfer({ onSwitchToStandardUpload }) {
   const receivedSizeRef = useRef(0);
   const expectedFileMetaRef = useRef(null);
   const transferStartRef = useRef(0);
+  const candidateQueueRef = useRef([]);
 
   // Generate 6-letter room code
   const generateRoomCode = () => {
@@ -158,13 +159,29 @@ export default function WebRTCTransfer({ onSwitchToStandardUpload }) {
 
           if (message.data.sdp) {
             await pc.setRemoteDescription(new RTCSessionDescription(message.data.sdp));
+            // Flush any ICE candidates that arrived early
+            if (candidateQueueRef.current.length > 0) {
+              for (const c of candidateQueueRef.current) {
+                try {
+                  await pc.addIceCandidate(new RTCIceCandidate(c));
+                } catch (e) {}
+              }
+              candidateQueueRef.current = [];
+            }
+
             if (message.data.sdp.type === 'offer') {
               const answer = await pc.createAnswer();
               await pc.setLocalDescription(answer);
               ws.send(JSON.stringify({ type: 'signal', data: { sdp: answer } }));
             }
           } else if (message.data.candidate) {
-            await pc.addIceCandidate(new RTCIceCandidate(message.data.candidate));
+            if (pc.remoteDescription && pc.remoteDescription.type) {
+              try {
+                await pc.addIceCandidate(new RTCIceCandidate(message.data.candidate));
+              } catch (e) {}
+            } else {
+              candidateQueueRef.current.push(message.data.candidate);
+            }
           }
         } else if (message.type === 'room-full') {
           setConnectionStatus('error');
@@ -296,13 +313,13 @@ export default function WebRTCTransfer({ onSwitchToStandardUpload }) {
         </div>
         <div>
           <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-            Device-to-Device Transfer
+            Direct Device-to-Device Send
             <span className="text-[10px] uppercase font-bold bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full">
-              WebRTC P2P
+              Live Direct
             </span>
           </h2>
           <p className="text-xs text-slate-500">
-            Direct browser-to-browser pipe without uploading to server storage.
+            Send files straight between phone and PC without saving to any server.
           </p>
         </div>
       </div>
@@ -326,7 +343,7 @@ export default function WebRTCTransfer({ onSwitchToStandardUpload }) {
               className="py-1.5 px-3 bg-rose-600 text-white rounded-lg text-xs font-semibold hover:bg-rose-700 flex items-center gap-1"
             >
               <Zap className="w-3.5 h-3.5" />
-              Use Standard Cloud Share (100% Guaranteed)
+              Use Standard Link Share
             </button>
           </div>
         </div>
@@ -349,7 +366,7 @@ export default function WebRTCTransfer({ onSwitchToStandardUpload }) {
                 <Laptop className="w-6 h-6" />
               </div>
               <h3 className="text-sm font-bold text-slate-800">Send from this Device</h3>
-              <p className="text-xs text-slate-400 mt-1">Select a file to stream directly to another device</p>
+              <p className="text-xs text-slate-400 mt-1">Pick a file to send live to another screen</p>
             </label>
 
             {/* Receive File Card */}
@@ -359,7 +376,7 @@ export default function WebRTCTransfer({ onSwitchToStandardUpload }) {
                   <Smartphone className="w-6 h-6" />
                 </div>
                 <h3 className="text-sm font-bold text-slate-800 text-center">Receive on this Device</h3>
-                <p className="text-xs text-slate-400 mt-1 text-center mb-3">Enter the sender's 6-character room code</p>
+                <p className="text-xs text-slate-400 mt-1 text-center mb-3">Enter the 6-letter room code from the sender</p>
               </div>
 
               <div className="space-y-2">
@@ -385,8 +402,7 @@ export default function WebRTCTransfer({ onSwitchToStandardUpload }) {
           <div className="p-3.5 rounded-xl bg-slate-50 text-[11px] text-slate-500 flex items-start gap-2">
             <Shield className="w-4 h-4 text-indigo-500 shrink-0 mt-0.5" />
             <span>
-              Direct WebRTC P2P streams gigabyte files without consuming cloud storage quotas.
-              Uses free public Google STUN servers. Both devices must keep their browser tabs open during transfer.
+              Sends any file directly from device to device. Both screens must keep this page open until the transfer finishes.
             </span>
           </div>
         </div>

@@ -295,6 +295,21 @@ export async function joinGroupByInvite(code) {
   return response.data;
 }
 
+export async function getGroupMessages(groupId) {
+  const response = await api.get(`/groups/${groupId}/messages`);
+  return response.data;
+}
+
+export async function sendGroupMessage(groupId, message) {
+  const response = await api.post(`/groups/${groupId}/messages`, { message });
+  return response.data;
+}
+
+export async function deleteGroupMessage(groupId, messageId) {
+  const response = await api.delete(`/groups/${groupId}/messages/${messageId}`);
+  return response.data;
+}
+
 // ========================================================
 // 9. Activity & Notifications
 // ========================================================

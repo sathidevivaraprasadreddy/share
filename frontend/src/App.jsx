@@ -37,6 +37,29 @@ export default function App() {
   });
   const [qrModalUrl, setQrModalUrl] = useState(null);
 
+  // Dark Mode Night Theme
+  const [darkMode, setDarkMode] = useState(() => {
+    try {
+      const saved = localStorage.getItem('quickshare_theme');
+      if (saved) return saved === 'dark';
+      return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    } catch {
+      return false;
+    }
+  });
+
+  useEffect(() => {
+    if (darkMode) {
+      document.documentElement.classList.add('dark');
+      try { localStorage.setItem('quickshare_theme', 'dark'); } catch {}
+    } else {
+      document.documentElement.classList.remove('dark');
+      try { localStorage.setItem('quickshare_theme', 'light'); } catch {}
+    }
+  }, [darkMode]);
+
+  const toggleDarkMode = () => setDarkMode((prev) => !prev);
+
   // Private Administrative Control Center route detection (/control-center)
   const [isAdminRoute, setIsAdminRoute] = useState(() => {
     return (
@@ -208,7 +231,7 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-gradient-to-b from-slate-50 via-slate-50 to-slate-100 font-sans text-slate-800 antialiased selection:bg-rose-500 selection:text-white">
+    <div className="min-h-screen flex flex-col bg-gradient-to-b from-slate-50 via-slate-50 to-slate-100 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 font-sans text-slate-800 dark:text-slate-100 antialiased selection:bg-rose-500 selection:text-white transition-colors duration-200">
       {/* Navigation Header */}
       <Navbar
         currentView={currentView}
@@ -233,6 +256,8 @@ export default function App() {
           setCurrentView('transfer');
         }}
         serverHealthy={serverHealthy}
+        darkMode={darkMode}
+        onToggleDarkMode={toggleDarkMode}
       />
 
       {/* Main Content Area */}
@@ -373,15 +398,15 @@ export default function App() {
       />
 
       {/* Footer with simple, easy to understand text */}
-      <footer className="py-6 border-t border-slate-200/80 bg-white/70 backdrop-blur-xs text-center text-xs text-slate-500">
+      <footer className="py-6 border-t border-slate-200/80 dark:border-slate-800 bg-white/70 dark:bg-slate-900/70 backdrop-blur-xs text-center text-xs text-slate-500 dark:text-slate-400">
         <div className="max-w-5xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-3">
           <div className="flex items-center gap-2">
-            <span className="font-bold text-slate-800">QuickShare</span>
+            <span className="font-bold text-slate-800 dark:text-slate-200">QuickShare</span>
             <span>•</span>
             <span>Simple, Fast & Free File Sharing</span>
           </div>
 
-          <div className="flex items-center gap-4 text-xs text-slate-500">
+          <div className="flex items-center gap-4 text-xs text-slate-500 dark:text-slate-400">
             <span className="inline-flex items-center gap-1">
               <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
               <span>Files Auto-Delete Safely</span>
