@@ -279,6 +279,7 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }) {
                     </span>
                     <input
                       type="text"
+                      placeholder="24kb1a05xx"
                       value={username}
                       onChange={(e) => setUsername(e.target.value)}
                       className="w-full pl-8 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500"
@@ -295,6 +296,7 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }) {
                     <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
                     <input
                       type="email"
+                      placeholder="24kb1a05xx@nbkrist.org"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500"
