@@ -6,6 +6,7 @@ import DownloadView from './components/DownloadView';
 import QRCodeModal from './components/QRCodeModal';
 import AuthModal from './components/AuthModal';
 import ProfileModal from './components/ProfileModal';
+import RevokeModal from './components/RevokeModal';
 import InboxView from './components/InboxView';
 import MyFilesView from './components/MyFilesView';
 import GroupsView from './components/GroupsView';
@@ -23,6 +24,7 @@ export default function App() {
   // Modals
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [profileModalOpen, setProfileModalOpen] = useState(false);
+  const [revokeModalOpen, setRevokeModalOpen] = useState(false);
 
   // Feedback notifications
   const [errorMessage, setErrorMessage] = useState(null);
@@ -140,6 +142,7 @@ export default function App() {
         currentUser={currentUser}
         onOpenAuth={() => setAuthModalOpen(true)}
         onOpenProfile={() => setProfileModalOpen(true)}
+        onOpenRevoke={() => setRevokeModalOpen(true)}
         onReset={handleResetToUpload}
         onSelectShare={(token) => {
           setTokenParam(token);
@@ -193,6 +196,7 @@ export default function App() {
                 onShareCompleted={(result) => setShareResult(result)}
                 onReceiveToken={(token) => setTokenParam(token)}
                 onRequestAuth={() => setAuthModalOpen(true)}
+                onOpenRevoke={() => setRevokeModalOpen(true)}
                 onError={(err) => setErrorMessage(err)}
                 onSuccess={(msg) => setSuccessNotification(msg)}
               />
@@ -258,6 +262,17 @@ export default function App() {
           onClose={() => setQrModalUrl(null)}
         />
       )}
+
+      {/* Emergency Revoke with Key Modal */}
+      <RevokeModal
+        isOpen={revokeModalOpen}
+        onClose={() => setRevokeModalOpen(false)}
+        onSuccess={() => {
+          setSuccessNotification('Files shredded and transfer permanently revoked.');
+          setRevokeModalOpen(false);
+          handleResetToUpload();
+        }}
+      />
 
       {/* Footer */}
       <footer className="py-6 border-t border-slate-200/80 bg-white/70 backdrop-blur-xs text-center text-xs text-slate-400">

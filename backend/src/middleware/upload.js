@@ -3,7 +3,7 @@ import path from 'path';
 import storageService from '../services/storageService.js';
 import { generateStoredFilename, sanitizeFilename } from '../utils/fileSecurity.js';
 
-const MAX_FILE_SIZE_MB = Number(process.env.MAX_FILE_SIZE_MB) || 50;
+const MAX_FILE_SIZE_MB = Number(process.env.MAX_FILE_SIZE_MB) || 1024;
 const MAX_FILES_COUNT = Number(process.env.MAX_FILES_COUNT) || 10;
 
 // Block dangerous executable extensions that could harm a server or recipient if executed

@@ -535,28 +535,39 @@ export async function downloadAllFiles(req, res, next) {
  */
 export async function revokeShareSession(req, res, next) {
   try {
-    const { shareToken, revokeToken } = req.body;
+    let { shareToken, token, revokeToken, code } = req.body;
+    let target = (shareToken || token || code || '').trim();
+    const cleanRevokeToken = (revokeToken || '').trim();
     const userId = req.user ? req.user.id : null;
 
-    if (!shareToken) {
+    if (!target) {
       return res.status(400).json({
         success: false,
-        error: 'shareToken is required to revoke a session.'
+        error: 'Share link, token, or 6-digit code is required to revoke a session.'
       });
+    }
+
+    // Extract token if full URL was pasted
+    if (target.includes('/share/')) {
+      target = target.split('/share/').pop().split('?')[0].split('#')[0].trim();
+    } else if (target.includes('/download/')) {
+      target = target.split('/download/').pop().split('/')[0].split('?')[0].trim();
     }
 
     const db = getDbPool();
 
-    // Query session
+    // Query session by share_token OR six_code
     const [sessions] = await db.query(
-      `SELECT id, user_id, is_revoked, total_size_bytes FROM share_sessions WHERE share_token = ?`,
-      [shareToken]
+      `SELECT id, user_id, share_token, revoke_token, is_revoked, total_size_bytes 
+       FROM share_sessions 
+       WHERE share_token = ? OR six_code = ?`,
+      [target, target]
     );
 
     if (sessions.length === 0) {
       return res.status(404).json({
         success: false,
-        error: 'Session not found.'
+        error: 'No active transfer session found matching this link or code.'
       });
     }
 
@@ -564,15 +575,7 @@ export async function revokeShareSession(req, res, next) {
 
     // Check authorization: Must provide matching revokeToken OR be the logged-in session owner
     const isOwner = userId && session.user_id === userId;
-    let tokenMatches = false;
-
-    if (revokeToken) {
-      const [tokenCheck] = await db.query(
-        `SELECT id FROM share_sessions WHERE share_token = ? AND revoke_token = ?`,
-        [shareToken, revokeToken]
-      );
-      tokenMatches = tokenCheck.length > 0;
-    }
+    const tokenMatches = cleanRevokeToken && session.revoke_token === cleanRevokeToken;
 
     if (!tokenMatches && !isOwner) {
       return res.status(403).json({
@@ -603,7 +606,7 @@ export async function revokeShareSession(req, res, next) {
     // Update user storage quota if owned
     if (session.user_id) {
       await db.query(
-        `UPDATE users SET storage_used_bytes = GREATEST(0, storage_used_bytes - ?) WHERE id = ?`,
+        `UPDATE users SET storage_used_bytes = MAX(0, storage_used_bytes - ?) WHERE id = ?`,
         [session.total_size_bytes, session.user_id]
       );
 

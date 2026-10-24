@@ -17,7 +17,8 @@ import {
   Hash,
   Sparkles,
   History,
-  ExternalLink
+  ExternalLink,
+  ShieldAlert
 } from 'lucide-react';
 import FileUploader from './FileUploader';
 import FileList from './FileList';
@@ -37,6 +38,7 @@ export default function TransferDashboard({
   onShareCompleted,
   onReceiveToken,
   onRequestAuth,
+  onOpenRevoke,
   onError,
   onSuccess
 }) {
@@ -45,6 +47,7 @@ export default function TransferDashboard({
 
   // Files state
   const [files, setFiles] = useState([]);
+  const [maxFileSizeMb, setMaxFileSizeMb] = useState(100);
   const [expiryHours, setExpiryHours] = useState(24);
   const [password, setPassword] = useState('');
   const [maxDownloads, setMaxDownloads] = useState('');
@@ -452,6 +455,8 @@ export default function TransferDashboard({
           <FileUploader
             onFilesSelected={handleFilesSelected}
             onError={(msg) => onError(msg)}
+            maxFileSizeMb={maxFileSizeMb}
+            onMaxFileSizeChange={setMaxFileSizeMb}
           />
 
           {/* Files List & Upload Controls */}
@@ -659,9 +664,21 @@ export default function TransferDashboard({
             </button>
           </form>
 
-          <div className="pt-4 border-t border-slate-100 flex items-center justify-center gap-2 text-xs text-slate-400">
-            <Shield className="w-4 h-4 text-emerald-500" />
-            <span>Rate-limited brute-force protection active</span>
+          <div className="pt-4 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-slate-500">
+            <div className="flex items-center gap-1.5 text-slate-400">
+              <Shield className="w-3.5 h-3.5 text-emerald-500" />
+              <span>Brute-force lockout active</span>
+            </div>
+            {onOpenRevoke && (
+              <button
+                type="button"
+                onClick={onOpenRevoke}
+                className="text-xs font-semibold text-amber-700 hover:text-amber-800 hover:underline flex items-center gap-1"
+              >
+                <ShieldAlert className="w-3.5 h-3.5 text-amber-600" />
+                <span>Delete previous upload with secret key</span>
+              </button>
+            )}
           </div>
         </div>
       )}

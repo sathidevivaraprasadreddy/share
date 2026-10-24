@@ -93,8 +93,16 @@ export default function DownloadView({ token, onBackToUpload }) {
     try {
       const data = await getSession(token, pwd);
       if (data.success) {
+        if (data.isPasswordRequired) {
+          setRequiresPassword(true);
+          setSession(data.session);
+          if (pwd) {
+            setPasswordError('Incorrect password. Please try again.');
+          }
+          return;
+        }
         setSession(data.session);
-        setFiles(data.files);
+        setFiles(data.files || []);
         setRequiresPassword(false);
         if (pwd) setActivePassword(pwd);
         playNotificationPing();
@@ -103,15 +111,17 @@ export default function DownloadView({ token, onBackToUpload }) {
       }
     } catch (err) {
       if (err.response) {
-        if (err.response.status === 401 && err.response.data?.requiresPassword) {
+        if (err.response.status === 401 && (err.response.data?.requiresPassword || err.response.data?.isPasswordRequired)) {
           setRequiresPassword(true);
           if (pwd) {
-            setPasswordError('Incorrect password. Please try again.');
+            setPasswordError(err.response.data?.error || 'Incorrect password. Please try again.');
           }
         } else if (err.response.data?.isRevoked) {
           setErrorStatus('revoked');
         } else if (err.response.data?.isExpired) {
           setErrorStatus('expired');
+        } else if (err.response.status === 410) {
+          setErrorStatus(err.response.data?.error || 'This link has expired or reached its download limit.');
         } else if (err.response.status === 404) {
           setErrorStatus('notfound');
         } else {

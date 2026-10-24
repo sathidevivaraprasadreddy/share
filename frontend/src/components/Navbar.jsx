@@ -6,6 +6,7 @@ import {
   Users,
   Activity,
   Shield,
+  ShieldAlert,
   User,
   LogIn,
   Menu,
@@ -22,6 +23,7 @@ export default function Navbar({
   currentUser,
   onOpenAuth,
   onOpenProfile,
+  onOpenRevoke,
   onReset,
   onSelectShare,
   serverHealthy
@@ -116,6 +118,16 @@ export default function Navbar({
             </span>
           </div>
 
+          {/* Emergency Revoke Key Button */}
+          <button
+            onClick={onOpenRevoke}
+            className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-amber-200 bg-amber-50/80 hover:bg-amber-100 text-amber-800 text-xs font-semibold transition-all"
+            title="Delete files early using your secret Revocation Key"
+          >
+            <ShieldAlert className="w-3.5 h-3.5 text-amber-600" />
+            <span>Revoke with Key</span>
+          </button>
+
           {/* Notifications (if logged in) */}
           {currentUser && (
             <NotificationsDropdown
@@ -196,6 +208,19 @@ export default function Navbar({
               </button>
             );
           })}
+
+          <div className="pt-2 border-t border-slate-100">
+            <button
+              onClick={() => {
+                setMobileMenuOpen(false);
+                onOpenRevoke();
+              }}
+              className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-semibold text-amber-800 bg-amber-50/80 hover:bg-amber-100 transition-all border border-amber-200"
+            >
+              <ShieldAlert className="w-4 h-4 text-amber-600" />
+              <span>Revoke with Key</span>
+            </button>
+          </div>
         </div>
       )}
     </header>

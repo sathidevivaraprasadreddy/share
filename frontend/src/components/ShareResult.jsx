@@ -282,11 +282,14 @@ export default function ShareResult({
         <div className="flex items-start gap-3">
           <ShieldAlert className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
           <div className="flex-1">
-            <h4 className="text-xs font-bold text-amber-900 uppercase tracking-wide">
-              Owner Management & Revocation
+            <h4 className="text-xs font-bold text-amber-900 uppercase tracking-wide flex items-center gap-1.5">
+              <span>Owner Management & Revocation</span>
             </h4>
-            <p className="text-xs text-amber-800/80 mt-1">
-              Want to delete these files early? Only you have the revocation key below:
+            <p className="text-xs text-amber-800/90 mt-1">
+              Want to delete these files early? Only you hold the secret 192-bit Revocation Key below.
+            </p>
+            <p className="text-[11px] text-amber-700/80 mt-0.5">
+              💡 <strong>Why copy this key?</strong> If you close this browser, you can return anytime on any device, click <strong>"Revoke with Key"</strong> in the top menu, and paste this key to instantly shred your files from our servers.
             </p>
 
             <div className="mt-2.5 flex items-center gap-2">
