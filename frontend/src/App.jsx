@@ -18,7 +18,14 @@ export default function App() {
   const [currentView, setCurrentView] = useState('transfer'); // 'transfer' | 'inbox' | 'my-files' | 'groups' | 'activity'
   const [currentUser, setCurrentUser] = useState(null);
   const [tokenParam, setTokenParam] = useState(null);
-  const [shareResult, setShareResult] = useState(null);
+  const [shareResult, setShareResult] = useState(() => {
+    try {
+      const saved = localStorage.getItem('quickshare_active_share');
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
   const [qrModalUrl, setQrModalUrl] = useState(null);
 
   // Modals
@@ -95,12 +102,24 @@ export default function App() {
     }
   }, [successNotification]);
 
+  const handleShareCompleted = (result) => {
+    setShareResult(result);
+    if (result) {
+      try {
+        localStorage.setItem('quickshare_active_share', JSON.stringify(result));
+      } catch {}
+    } else {
+      localStorage.removeItem('quickshare_active_share');
+    }
+  };
+
   const handleRevoke = async (shareToken, revokeToken) => {
     try {
       const res = await revokeSession(shareToken, revokeToken);
       if (res.success) {
         setSuccessNotification('Sharing session revoked and files removed permanently from storage.');
         setShareResult(null);
+        localStorage.removeItem('quickshare_active_share');
       }
     } catch (err) {
       setErrorMessage(err.response?.data?.error || 'Failed to revoke session.');
@@ -136,8 +155,13 @@ export default function App() {
         currentView={currentView}
         onChangeView={(view) => {
           setTokenParam(null);
-          setShareResult(null);
           setCurrentView(view);
+        }}
+        activeShare={shareResult}
+        isViewingShareResult={Boolean(shareResult && !tokenParam && currentView === 'transfer')}
+        onSelectActiveShare={() => {
+          setTokenParam(null);
+          setCurrentView('transfer');
         }}
         currentUser={currentUser}
         onOpenAuth={() => setAuthModalOpen(true)}
@@ -193,7 +217,8 @@ export default function App() {
             {currentView === 'transfer' && (
               <TransferDashboard
                 currentUser={currentUser}
-                onShareCompleted={(result) => setShareResult(result)}
+                activeShare={shareResult}
+                onShareCompleted={handleShareCompleted}
                 onReceiveToken={(token) => setTokenParam(token)}
                 onRequestAuth={() => setAuthModalOpen(true)}
                 onOpenRevoke={() => setRevokeModalOpen(true)}

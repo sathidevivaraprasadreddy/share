@@ -20,6 +20,9 @@ import NotificationsDropdown from './NotificationsDropdown';
 export default function Navbar({
   currentView,
   onChangeView,
+  activeShare,
+  isViewingShareResult,
+  onSelectActiveShare,
   currentUser,
   onOpenAuth,
   onOpenProfile,
@@ -97,6 +100,24 @@ export default function Navbar({
                 </button>
               );
             })}
+            {activeShare && (
+              <button
+                type="button"
+                onClick={() => {
+                  onSelectActiveShare();
+                  setMobileMenuOpen(false);
+                }}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all border ${
+                  isViewingShareResult
+                    ? 'bg-rose-600 text-white border-rose-600 shadow-xs'
+                    : 'bg-rose-50 border-rose-200 text-rose-700 hover:bg-rose-100 shadow-xs'
+                }`}
+                title="View active share code, QR, and secret revocation key"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-rose-500 animate-pulse" />
+                <span>Active Share ({activeShare.sixCode || 'Link'})</span>
+              </button>
+            )}
           </nav>
         </div>
 
@@ -182,7 +203,27 @@ export default function Navbar({
 
       {/* Mobile Menu Dropdown */}
       {mobileMenuOpen && (
-        <div className="md:hidden border-t border-slate-200/80 bg-white px-4 py-3 space-y-1 animate-fade-in shadow-lg">
+        <div className="md:hidden border-t border-slate-200/80 bg-white px-4 py-3 space-y-2 animate-fade-in shadow-lg">
+          {activeShare && (
+            <div className="pb-2 border-b border-slate-100">
+              <button
+                type="button"
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  onSelectActiveShare();
+                }}
+                className="w-full flex items-center justify-between p-2.5 rounded-xl text-xs font-bold text-rose-700 bg-rose-50 border border-rose-200"
+              >
+                <div className="flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-rose-600 animate-pulse" />
+                  <span>Active Share: Code {activeShare.sixCode || 'Ready'}</span>
+                </div>
+                <span className="text-[10px] bg-rose-600 text-white px-2 py-0.5 rounded-full font-bold">
+                  View Key & QR →
+                </span>
+              </button>
+            </div>
+          )}
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = currentView === item.id;
