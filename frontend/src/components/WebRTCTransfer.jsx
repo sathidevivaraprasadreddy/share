@@ -305,20 +305,20 @@ export default function WebRTCTransfer({ onSwitchToStandardUpload }) {
   };
 
   return (
-    <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-xl border border-slate-100 max-w-xl mx-auto animate-fade-in">
+    <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-8 shadow-xl border border-slate-100 dark:border-slate-800 max-w-xl mx-auto animate-fade-in">
       {/* Header */}
       <div className="flex items-center gap-3 mb-6">
-        <div className="w-10 h-10 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold">
+        <div className="w-10 h-10 rounded-2xl bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold">
           <Wifi className="w-5 h-5" />
         </div>
         <div>
-          <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+          <h2 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
             Direct Device-to-Device Send
-            <span className="text-[10px] uppercase font-bold bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full">
+            <span className="text-[10px] uppercase font-bold bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 px-2 py-0.5 rounded-full">
               Live Direct
             </span>
           </h2>
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-slate-500 dark:text-slate-400">
             Send files straight between phone and PC without saving to any server.
           </p>
         </div>
@@ -326,7 +326,7 @@ export default function WebRTCTransfer({ onSwitchToStandardUpload }) {
 
       {/* Error Banner with fallback button */}
       {errorMessage && (
-        <div className="mb-6 p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-700 text-xs sm:text-sm">
+        <div className="mb-6 p-4 rounded-2xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/50 text-rose-700 dark:text-rose-300 text-xs sm:text-sm">
           <div className="flex items-start gap-2.5">
             <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
             <div className="flex-1 font-medium">{errorMessage}</div>
@@ -334,7 +334,7 @@ export default function WebRTCTransfer({ onSwitchToStandardUpload }) {
           <div className="mt-3 flex gap-2">
             <button
               onClick={handleReset}
-              className="py-1.5 px-3 bg-white border border-rose-200 text-rose-700 rounded-lg text-xs font-semibold hover:bg-rose-100"
+              className="py-1.5 px-3 bg-white dark:bg-slate-800 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 rounded-lg text-xs font-semibold hover:bg-rose-100 dark:hover:bg-rose-900/40"
             >
               Try Again
             </button>
@@ -354,7 +354,7 @@ export default function WebRTCTransfer({ onSwitchToStandardUpload }) {
         <div className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {/* Send File Card */}
-            <label className="p-5 rounded-2xl border-2 border-dashed border-indigo-200 hover:border-indigo-500 hover:bg-indigo-50/40 cursor-pointer transition-all flex flex-col items-center text-center group">
+            <label className="p-5 rounded-2xl border-2 border-dashed border-indigo-200 dark:border-indigo-900/60 hover:border-indigo-500 dark:hover:border-indigo-500 hover:bg-indigo-50/40 dark:hover:bg-indigo-950/30 cursor-pointer transition-all flex flex-col items-center text-center group">
               <input
                 type="file"
                 className="hidden"
@@ -362,21 +362,21 @@ export default function WebRTCTransfer({ onSwitchToStandardUpload }) {
                   if (e.target.files[0]) startHosting(e.target.files[0]);
                 }}
               />
-              <div className="w-12 h-12 rounded-2xl bg-indigo-100 text-indigo-600 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+              <div className="w-12 h-12 rounded-2xl bg-indigo-100 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
                 <Laptop className="w-6 h-6" />
               </div>
-              <h3 className="text-sm font-bold text-slate-800">Send from this Device</h3>
-              <p className="text-xs text-slate-400 mt-1">Pick a file to send live to another screen</p>
+              <h3 className="text-sm font-bold text-slate-800 dark:text-white">Send from this Device</h3>
+              <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">Pick a file to send live to another screen</p>
             </label>
 
             {/* Receive File Card */}
-            <div className="p-5 rounded-2xl border border-slate-200 bg-slate-50 flex flex-col justify-between">
+            <div className="p-5 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 flex flex-col justify-between">
               <div>
-                <div className="w-12 h-12 rounded-2xl bg-slate-200 text-slate-700 flex items-center justify-center mb-3 mx-auto">
+                <div className="w-12 h-12 rounded-2xl bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 flex items-center justify-center mb-3 mx-auto">
                   <Smartphone className="w-6 h-6" />
                 </div>
-                <h3 className="text-sm font-bold text-slate-800 text-center">Receive on this Device</h3>
-                <p className="text-xs text-slate-400 mt-1 text-center mb-3">Enter the 6-letter room code from the sender</p>
+                <h3 className="text-sm font-bold text-slate-800 dark:text-white text-center">Receive on this Device</h3>
+                <p className="text-xs text-slate-400 dark:text-slate-500 mt-1 text-center mb-3">Enter the 6-letter room code from the sender</p>
               </div>
 
               <div className="space-y-2">
@@ -386,7 +386,7 @@ export default function WebRTCTransfer({ onSwitchToStandardUpload }) {
                   placeholder="ROOM CODE"
                   value={inputRoomId}
                   onChange={(e) => setInputRoomId(e.target.value.toUpperCase())}
-                  className="w-full text-center tracking-widest font-mono font-bold py-2 bg-white border border-slate-200 rounded-xl text-sm uppercase focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                  className="w-full text-center tracking-widest font-mono font-bold py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white rounded-xl text-sm uppercase focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
                 />
                 <button
                   onClick={joinTransfer}
@@ -399,7 +399,7 @@ export default function WebRTCTransfer({ onSwitchToStandardUpload }) {
             </div>
           </div>
 
-          <div className="p-3.5 rounded-xl bg-slate-50 text-[11px] text-slate-500 flex items-start gap-2">
+          <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 text-[11px] text-slate-500 dark:text-slate-400 flex items-start gap-2">
             <Shield className="w-4 h-4 text-indigo-500 shrink-0 mt-0.5" />
             <span>
               Sends any file directly from device to device. Both screens must keep this page open until the transfer finishes.
@@ -411,30 +411,30 @@ export default function WebRTCTransfer({ onSwitchToStandardUpload }) {
       {/* Screen 2: Host Room (Waiting for Peer) */}
       {mode === 'host' && connectionStatus === 'waiting' && (
         <div className="text-center py-6 space-y-4">
-          <div className="inline-block p-4 rounded-3xl bg-indigo-50 text-indigo-600 animate-pulse">
+          <div className="inline-block p-4 rounded-3xl bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 animate-pulse">
             <Wifi className="w-8 h-8" />
           </div>
           <div>
-            <h3 className="text-base font-bold text-slate-900">Waiting for receiver to connect...</h3>
-            <p className="text-xs text-slate-500 mt-1">
+            <h3 className="text-base font-bold text-slate-900 dark:text-white">Waiting for receiver to connect...</h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
               Ask the receiver to open QuickShare on their phone/PC and enter this room code:
             </p>
           </div>
 
-          <div className="py-3 px-6 bg-indigo-50 border-2 border-indigo-200 rounded-2xl inline-block">
-            <span className="text-3xl font-mono font-extrabold tracking-widest text-indigo-700">
+          <div className="py-3 px-6 bg-indigo-50 dark:bg-indigo-950/50 border-2 border-indigo-200 dark:border-indigo-800 rounded-2xl inline-block">
+            <span className="text-3xl font-mono font-extrabold tracking-widest text-indigo-700 dark:text-indigo-300">
               {roomId}
             </span>
           </div>
 
-          <div className="text-xs text-slate-600 font-medium">
-            File prepared: <span className="font-bold text-slate-900">{selectedFile?.name}</span> ({formatBytes(selectedFile?.size || 0)})
+          <div className="text-xs text-slate-600 dark:text-slate-300 font-medium">
+            File prepared: <span className="font-bold text-slate-900 dark:text-white">{selectedFile?.name}</span> ({formatBytes(selectedFile?.size || 0)})
           </div>
 
           <div>
             <button
               onClick={handleReset}
-              className="text-xs font-semibold text-slate-400 hover:text-slate-700"
+              className="text-xs font-semibold text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
             >
               Cancel Transfer
             </button>
@@ -448,29 +448,29 @@ export default function WebRTCTransfer({ onSwitchToStandardUpload }) {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping"></span>
-              <span className="text-xs font-bold text-slate-800">
+              <span className="text-xs font-bold text-slate-800 dark:text-white">
                 {connectionStatus === 'sending' ? 'Streaming to receiver...' : 'Receiving file chunks...'}
               </span>
             </div>
             {transferSpeed && (
-              <span className="text-xs font-mono font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-md">
+              <span className="text-xs font-mono font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/50 px-2 py-0.5 rounded-md">
                 {transferSpeed}
               </span>
             )}
           </div>
 
-          <div className="w-full bg-slate-100 rounded-full h-3 overflow-hidden">
+          <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-3 overflow-hidden">
             <div
               className="bg-indigo-600 h-3 rounded-full transition-all duration-200"
               style={{ width: `${transferProgress}%` }}
             ></div>
           </div>
 
-          <div className="flex items-center justify-between text-xs text-slate-500">
+          <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
             <span>
               {connectionStatus === 'sending' ? selectedFile?.name : expectedFileMetaRef.current?.name}
             </span>
-            <span className="font-bold text-slate-800">{transferProgress}%</span>
+            <span className="font-bold text-slate-800 dark:text-white">{transferProgress}%</span>
           </div>
 
           <p className="text-[11px] text-center text-slate-400">
@@ -482,14 +482,14 @@ export default function WebRTCTransfer({ onSwitchToStandardUpload }) {
       {/* Screen 4: Transfer Completed */}
       {connectionStatus === 'completed' && (
         <div className="text-center py-6 space-y-4">
-          <div className="inline-block p-4 rounded-3xl bg-emerald-50 text-emerald-600">
+          <div className="inline-block p-4 rounded-3xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400">
             <CheckCircle className="w-10 h-10" />
           </div>
-          <h3 className="text-lg font-bold text-slate-900">Transfer Completed Successfully!</h3>
+          <h3 className="text-lg font-bold text-slate-900 dark:text-white">Transfer Completed Successfully!</h3>
 
           {receivedFile ? (
-            <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100 space-y-3">
-              <div className="text-xs text-slate-700 font-semibold truncate">
+            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/80 border border-slate-100 dark:border-slate-700 space-y-3">
+              <div className="text-xs text-slate-700 dark:text-slate-200 font-semibold truncate">
                 {receivedFile.name} ({formatBytes(receivedFile.size)})
               </div>
               <a
@@ -501,7 +501,7 @@ export default function WebRTCTransfer({ onSwitchToStandardUpload }) {
               </a>
             </div>
           ) : (
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-slate-500 dark:text-slate-400">
               The file was streamed directly to the receiver.
             </p>
           )}
@@ -509,7 +509,7 @@ export default function WebRTCTransfer({ onSwitchToStandardUpload }) {
           <div>
             <button
               onClick={handleReset}
-              className="py-2 px-5 bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-semibold rounded-xl"
+              className="py-2 px-5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 text-xs font-semibold rounded-xl"
             >
               Start Another Transfer
             </button>

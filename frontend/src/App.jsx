@@ -51,9 +51,11 @@ export default function App() {
   useEffect(() => {
     if (darkMode) {
       document.documentElement.classList.add('dark');
+      document.body.classList.add('dark');
       try { localStorage.setItem('quickshare_theme', 'dark'); } catch {}
     } else {
       document.documentElement.classList.remove('dark');
+      document.body.classList.remove('dark');
       try { localStorage.setItem('quickshare_theme', 'light'); } catch {}
     }
   }, [darkMode]);
@@ -231,7 +233,11 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-gradient-to-b from-slate-50 via-slate-50 to-slate-100 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 font-sans text-slate-800 dark:text-slate-100 antialiased selection:bg-rose-500 selection:text-white transition-colors duration-200">
+    <div className={`min-h-screen flex flex-col font-sans transition-colors duration-200 antialiased selection:bg-rose-500 selection:text-white ${
+      darkMode
+        ? 'dark bg-slate-950 text-slate-100'
+        : 'bg-gradient-to-b from-slate-50 via-slate-50 to-slate-100 text-slate-900'
+    }`}>
       {/* Navigation Header */}
       <Navbar
         currentView={currentView}

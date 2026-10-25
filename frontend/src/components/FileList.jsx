@@ -47,22 +47,22 @@ export default function FileList({
   const totalSizeBytes = files.reduce((acc, f) => acc + f.size, 0);
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-200/90 shadow-sm p-5 sm:p-6 transition-all">
+    <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-sm p-5 sm:p-6 transition-all">
       {/* Header */}
-      <div className="flex items-center justify-between pb-4 border-b border-slate-100">
+      <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800">
         <div>
-          <h4 className="font-semibold text-slate-800 text-base">
+          <h4 className="font-semibold text-slate-800 dark:text-white text-base">
             Selected Files ({files.length})
           </h4>
-          <p className="text-xs text-slate-500 mt-0.5">
-            Total size: <span className="font-medium text-slate-700">{formatFileSize(totalSizeBytes)}</span>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+            Total size: <span className="font-medium text-slate-700 dark:text-slate-200">{formatFileSize(totalSizeBytes)}</span>
           </p>
         </div>
 
         {!uploading && (
           <button
             onClick={onClearFiles}
-            className="text-xs text-slate-400 hover:text-rose-600 flex items-center gap-1 transition-colors px-2 py-1 rounded-md hover:bg-rose-50"
+            className="text-xs text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 flex items-center gap-1 transition-colors px-2 py-1 rounded-md hover:bg-rose-50 dark:hover:bg-rose-950/40"
           >
             <Trash2 className="w-3.5 h-3.5" />
             <span>Clear all</span>
@@ -71,21 +71,21 @@ export default function FileList({
       </div>
 
       {/* List of files */}
-      <div className="max-h-64 overflow-y-auto divide-y divide-slate-100 my-3">
+      <div className="max-h-64 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800 my-3">
         {files.map((file, index) => (
           <div
             key={`${file.name}-${index}`}
-            className="py-3 px-2 flex items-center justify-between hover:bg-slate-50/80 rounded-xl transition-colors group"
+            className="py-3 px-2 flex items-center justify-between hover:bg-slate-50/80 dark:hover:bg-slate-800/60 rounded-xl transition-colors group"
           >
             <div className="flex items-center gap-3 min-w-0 pr-3">
-              <div className="w-9 h-9 rounded-lg bg-slate-100 flex items-center justify-center shrink-0">
+              <div className="w-9 h-9 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center shrink-0">
                 {getFileIcon(file.name)}
               </div>
               <div className="min-w-0">
-                <p className="text-sm font-medium text-slate-800 truncate" title={file.name}>
+                <p className="text-sm font-medium text-slate-800 dark:text-white truncate" title={file.name}>
                   {file.name}
                 </p>
-                <p className="text-xs text-slate-400 mt-0.5">
+                <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">
                   {formatFileSize(file.size)}
                 </p>
               </div>
@@ -94,7 +94,7 @@ export default function FileList({
             {!uploading && (
               <button
                 onClick={() => onRemoveFile(index)}
-                className="text-slate-400 hover:text-rose-600 p-1.5 rounded-lg hover:bg-rose-50 transition-colors shrink-0"
+                className="text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 p-1.5 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors shrink-0"
                 title="Remove file"
               >
                 <X className="w-4 h-4" />
@@ -105,15 +105,15 @@ export default function FileList({
       </div>
 
       {/* Expiry Selector */}
-      <div className="pt-4 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div className="flex items-center gap-2 text-xs text-slate-600">
+      <div className="pt-4 border-t border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-300">
           <Clock className="w-4 h-4 text-slate-400" />
           <span className="font-medium">Link expires in:</span>
           <select
             value={expiryHours}
             onChange={(e) => setExpiryHours(Number(e.target.value))}
             disabled={uploading}
-            className="bg-slate-50 border border-slate-200 text-slate-800 text-xs rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 transition-all cursor-pointer font-medium"
+            className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-white text-xs rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 transition-all cursor-pointer font-medium"
           >
             <option value={1}>1 hour</option>
             <option value={6}>6 hours</option>
@@ -137,16 +137,16 @@ export default function FileList({
 
       {/* Live Upload Progress */}
       {uploading && (
-        <div className="mt-4 pt-4 border-t border-slate-100 space-y-2">
-          <div className="flex justify-between items-center text-xs font-medium text-slate-600">
-            <span className="flex items-center gap-1.5 text-rose-600">
+        <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800 space-y-2">
+          <div className="flex justify-between items-center text-xs font-medium text-slate-600 dark:text-slate-300">
+            <span className="flex items-center gap-1.5 text-rose-600 dark:text-rose-400">
               <Loader2 className="w-3.5 h-3.5 animate-spin" />
               <span>Uploading files...</span>
             </span>
             <span>{uploadProgress}%</span>
           </div>
 
-          <div className="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden">
+          <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-2.5 overflow-hidden">
             <div
               className="bg-gradient-to-r from-rose-500 to-rose-600 h-2.5 rounded-full transition-all duration-200 ease-out"
               style={{ width: `${uploadProgress}%` }}

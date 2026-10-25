@@ -128,14 +128,24 @@ export default function Navbar({
           <button
             type="button"
             onClick={onToggleDarkMode}
-            className="p-2 rounded-xl text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-            title={darkMode ? "Switch to Day Mode" : "Switch to Night Mode"}
+            className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl border text-xs font-bold transition-all ${
+              darkMode
+                ? 'bg-amber-950/40 border-amber-500/50 text-amber-300 hover:bg-amber-900/60 shadow-xs'
+                : 'bg-slate-100 hover:bg-slate-200 border-slate-200 text-slate-700 shadow-2xs'
+            }`}
+            title={darkMode ? "Currently Night Mode. Click for Day Mode" : "Currently Day Mode. Click for Night Mode"}
             aria-label="Toggle Night Mode"
           >
             {darkMode ? (
-              <Sun className="w-4 h-4 text-amber-400" />
+              <>
+                <Sun className="w-4 h-4 text-amber-400" />
+                <span className="hidden sm:inline">Night</span>
+              </>
             ) : (
-              <Moon className="w-4 h-4 text-slate-600" />
+              <>
+                <Moon className="w-4 h-4 text-indigo-600" />
+                <span className="hidden sm:inline">Day</span>
+              </>
             )}
           </button>
 
@@ -177,7 +187,7 @@ export default function Navbar({
           {currentUser ? (
             <button
               onClick={onOpenProfile}
-              className="flex items-center gap-2 pl-2 pr-3 py-1.5 rounded-full hover:bg-slate-100 border border-slate-200/80 transition-all text-left"
+              className="flex items-center gap-2 pl-2 pr-3 py-1.5 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200/80 dark:border-slate-700 transition-all text-left"
               title="Profile & Storage Quota"
             >
               <div
@@ -187,10 +197,10 @@ export default function Navbar({
                 {currentUser.username ? currentUser.username[0] : 'U'}
               </div>
               <div className="hidden sm:block">
-                <span className="text-xs font-bold text-slate-800 block leading-tight">
+                <span className="text-xs font-bold text-slate-800 dark:text-slate-100 block leading-tight">
                   {currentUser.displayName || currentUser.username}
                 </span>
-                <span className="text-[10px] text-slate-400 block leading-none">
+                <span className="text-[10px] text-slate-400 dark:text-slate-400 block leading-none">
                   @{currentUser.username}
                 </span>
               </div>

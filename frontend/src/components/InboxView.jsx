@@ -88,12 +88,12 @@ export default function InboxView({ user, onRequireAuth }) {
 
   if (!user) {
     return (
-      <div className="bg-white rounded-3xl p-8 shadow-xl border border-slate-100 max-w-lg mx-auto text-center space-y-4 animate-fade-in">
-        <div className="w-14 h-14 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center mx-auto">
+      <div className="bg-white dark:bg-slate-900 rounded-3xl p-8 shadow-xl border border-slate-100 dark:border-slate-800 max-w-lg mx-auto text-center space-y-4 animate-fade-in">
+        <div className="w-14 h-14 rounded-2xl bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 flex items-center justify-center mx-auto">
           <Inbox className="w-7 h-7" />
         </div>
-        <h2 className="text-xl font-bold text-slate-900">Your Private Inbox</h2>
-        <p className="text-xs sm:text-sm text-slate-500">
+        <h2 className="text-xl font-bold text-slate-900 dark:text-white">Your Private Inbox</h2>
+        <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
           Sign in or create a free account to receive files sent directly to your username.
         </p>
         <button
@@ -118,27 +118,27 @@ export default function InboxView({ user, onRequireAuth }) {
   return (
     <div className="max-w-4xl w-full mx-auto space-y-6 animate-fade-in">
       {/* Top Banner */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-slate-900 p-6 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-800">
         <div>
-          <h1 className="text-xl font-bold text-slate-900 flex items-center gap-2">
+          <h1 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
             <Inbox className="w-5 h-5 text-rose-600" />
             Inbox
           </h1>
-          <p className="text-xs text-slate-500 mt-0.5">
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
             Files sent directly to your username (@{user.username}).
           </p>
         </div>
 
         {/* Filter Pills */}
-        <div className="flex bg-slate-100 p-1 rounded-2xl self-start sm:self-auto">
+        <div className="flex bg-slate-100 dark:bg-slate-800/80 p-1 rounded-2xl self-start sm:self-auto">
           {['all', 'unread', 'pinned', 'archived'].map((f) => (
             <button
               key={f}
               onClick={() => setFilter(f)}
               className={`px-3 py-1.5 text-xs font-semibold rounded-xl capitalize transition-all ${
                 filter === f
-                  ? 'bg-white text-slate-900 shadow-sm'
-                  : 'text-slate-500 hover:text-slate-900'
+                  ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm'
+                  : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
               }`}
             >
               {f}
@@ -149,13 +149,13 @@ export default function InboxView({ user, onRequireAuth }) {
 
       {/* Notices */}
       {notice && (
-        <div className="p-3.5 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-2xl text-xs font-medium flex items-center gap-2">
+        <div className="p-3.5 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900/50 text-emerald-700 dark:text-emerald-300 rounded-2xl text-xs font-medium flex items-center gap-2">
           <CheckCircle className="w-4 h-4 shrink-0" />
           {notice}
         </div>
       )}
       {error && (
-        <div className="p-3.5 bg-rose-50 border border-rose-200 text-rose-700 rounded-2xl text-xs font-medium flex items-center gap-2">
+        <div className="p-3.5 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/50 text-rose-700 dark:text-rose-300 rounded-2xl text-xs font-medium flex items-center gap-2">
           <AlertCircle className="w-4 h-4 shrink-0" />
           {error}
         </div>
@@ -169,7 +169,7 @@ export default function InboxView({ user, onRequireAuth }) {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search by sender, file name, or note..."
-          className="w-full pl-11 pr-4 py-3 bg-white border border-slate-200 rounded-2xl text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 shadow-sm"
+          className="w-full pl-11 pr-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white rounded-2xl text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 shadow-sm"
         />
       </div>
 
@@ -179,9 +179,9 @@ export default function InboxView({ user, onRequireAuth }) {
           Loading inbox transfers...
         </div>
       ) : filteredItems.length === 0 ? (
-        <div className="bg-white rounded-3xl p-12 text-center shadow-sm border border-slate-100 space-y-3">
-          <Inbox className="w-10 h-10 text-slate-300 mx-auto" />
-          <h3 className="text-sm font-bold text-slate-700">No transfers in this view</h3>
+        <div className="bg-white dark:bg-slate-900 rounded-3xl p-12 text-center shadow-sm border border-slate-100 dark:border-slate-800 space-y-3">
+          <Inbox className="w-10 h-10 text-slate-300 dark:text-slate-600 mx-auto" />
+          <h3 className="text-sm font-bold text-slate-700 dark:text-slate-200">No transfers in this view</h3>
           <p className="text-xs text-slate-400 max-w-sm mx-auto">
             When friends, team members, or colleagues send files directly to @{user.username}, they will arrive here automatically.
           </p>
@@ -191,10 +191,10 @@ export default function InboxView({ user, onRequireAuth }) {
           {filteredItems.map((item) => (
             <div
               key={item.id}
-              className={`bg-white rounded-3xl p-5 sm:p-6 shadow-sm border transition-all ${
+              className={`bg-white dark:bg-slate-900 rounded-3xl p-5 sm:p-6 shadow-sm border transition-all ${
                 item.status === 'pinned'
-                  ? 'border-indigo-200 bg-indigo-50/20 ring-1 ring-indigo-200'
-                  : 'border-slate-100 hover:border-slate-200'
+                  ? 'border-indigo-200 dark:border-indigo-900/50 bg-indigo-50/20 dark:bg-indigo-950/20 ring-1 ring-indigo-200 dark:ring-indigo-900/40'
+                  : 'border-slate-100 dark:border-slate-800 hover:border-slate-200 dark:hover:border-slate-700'
               }`}
             >
               {/* Header: Sender Info & Actions */}
@@ -207,9 +207,9 @@ export default function InboxView({ user, onRequireAuth }) {
                     {(item.sender.displayName || item.sender.username)[0].toUpperCase()}
                   </div>
                   <div>
-                    <div className="text-xs font-bold text-slate-900">
+                    <div className="text-xs font-bold text-slate-900 dark:text-white">
                       {item.sender.displayName}
-                      <span className="text-slate-400 font-normal ml-1.5 font-mono">
+                      <span className="text-slate-400 dark:text-slate-500 font-normal ml-1.5 font-mono">
                         @{item.sender.username}
                       </span>
                     </div>
@@ -231,8 +231,8 @@ export default function InboxView({ user, onRequireAuth }) {
                     title={item.status === 'pinned' ? 'Unpin' : 'Pin to top'}
                     className={`p-2 rounded-xl text-xs transition-colors ${
                       item.status === 'pinned'
-                        ? 'text-indigo-600 bg-indigo-50'
-                        : 'text-slate-400 hover:text-slate-700 hover:bg-slate-50'
+                        ? 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/50'
+                        : 'text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800'
                     }`}
                   >
                     <Pin className="w-4 h-4" />
@@ -243,8 +243,8 @@ export default function InboxView({ user, onRequireAuth }) {
                     title={item.status === 'archived' ? 'Unarchive' : 'Archive'}
                     className={`p-2 rounded-xl text-xs transition-colors ${
                       item.status === 'archived'
-                        ? 'text-amber-600 bg-amber-50'
-                        : 'text-slate-400 hover:text-slate-700 hover:bg-slate-50'
+                        ? 'text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/50'
+                        : 'text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800'
                     }`}
                   >
                     <Archive className="w-4 h-4" />
@@ -253,7 +253,7 @@ export default function InboxView({ user, onRequireAuth }) {
                   <button
                     onClick={() => handleRemove(item.id)}
                     title="Remove from Inbox"
-                    className="p-2 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
+                    className="p-2 rounded-xl text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>
@@ -262,18 +262,18 @@ export default function InboxView({ user, onRequireAuth }) {
 
               {/* Note from Sender */}
               {item.note && (
-                <div className="mb-4 p-3 rounded-2xl bg-slate-50 text-xs text-slate-700 border border-slate-100 italic">
+                <div className="mb-4 p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/70 text-xs text-slate-700 dark:text-slate-300 border border-slate-100 dark:border-slate-700 italic">
                   "{item.note}"
                 </div>
               )}
 
               {/* Files Listing */}
-              <div className="bg-slate-50 rounded-2xl p-3 divide-y divide-slate-100">
+              <div className="bg-slate-50 dark:bg-slate-800/50 rounded-2xl p-3 divide-y divide-slate-100 dark:divide-slate-700">
                 {item.files.map((file) => (
                   <div key={file.id} className="py-2.5 px-2 flex items-center justify-between gap-3">
                     <div className="flex items-center gap-2.5 min-w-0">
                       <FileText className="w-4 h-4 text-slate-400 shrink-0" />
-                      <span className="text-xs font-semibold text-slate-800 truncate">
+                      <span className="text-xs font-semibold text-slate-800 dark:text-slate-200 truncate">
                         {file.name}
                       </span>
                       <span className="text-[11px] text-slate-400 shrink-0 font-mono">
@@ -284,7 +284,7 @@ export default function InboxView({ user, onRequireAuth }) {
                     <a
                       href={getSingleFileDownloadUrl(item.shareToken, file.id)}
                       download={file.name}
-                      className="py-1 px-3 bg-white hover:bg-slate-100 border border-slate-200 rounded-lg text-xs font-semibold text-slate-700 flex items-center gap-1 transition-colors shrink-0"
+                      className="py-1 px-3 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-1 transition-colors shrink-0"
                     >
                       <Download className="w-3.5 h-3.5" />
                       Download
@@ -295,7 +295,7 @@ export default function InboxView({ user, onRequireAuth }) {
 
               {/* Bottom Actions */}
               {item.files.length > 1 && (
-                <div className="mt-4 flex items-center justify-between pt-3 border-t border-slate-100">
+                <div className="mt-4 flex items-center justify-between pt-3 border-t border-slate-100 dark:border-slate-800">
                   <span className="text-xs text-slate-400 font-mono">
                     Total: {item.fileCount} files ({formatBytes(item.totalSizeBytes)})
                   </span>

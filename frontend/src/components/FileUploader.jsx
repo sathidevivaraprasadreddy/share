@@ -84,11 +84,11 @@ export default function FileUploader({
     <div className="space-y-2">
       {/* Adjustable Capacity Bar */}
       <div className="flex flex-wrap items-center justify-between gap-2 px-1">
-        <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-600">
+        <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-600 dark:text-slate-300">
           <SlidersHorizontal className="w-3.5 h-3.5 text-rose-500" />
           <span>Upload File Size Limit:</span>
         </div>
-        <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-xl border border-slate-200/80">
+        <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-0.5 rounded-xl border border-slate-200/80 dark:border-slate-700">
           {SIZE_PRESETS.map((preset) => {
             const isSelected = activeLimit === preset.value;
             return (
@@ -98,8 +98,8 @@ export default function FileUploader({
                 onClick={(e) => handleSelectLimit(preset.value, e)}
                 className={`text-[11px] font-bold px-2.5 py-1 rounded-lg transition-all ${
                   isSelected
-                    ? 'bg-white text-rose-600 shadow-xs scale-[1.02]'
-                    : 'text-slate-500 hover:text-slate-900 hover:bg-slate-200/60'
+                    ? 'bg-white dark:bg-slate-700 text-rose-600 dark:text-rose-400 shadow-xs scale-[1.02]'
+                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-slate-700/60'
                 }`}
                 title={`Set file size limit to ${preset.label}`}
               >
@@ -118,8 +118,8 @@ export default function FileUploader({
         onClick={() => fileInputRef.current?.click()}
         className={`relative border-2 border-dashed rounded-3xl p-8 sm:p-11 text-center cursor-pointer transition-all duration-200 select-none ${
           isDragging
-            ? 'border-rose-500 bg-rose-50/50 scale-[1.01]'
-            : 'border-slate-300 hover:border-rose-400 bg-white hover:bg-slate-50/50 shadow-sm'
+            ? 'border-rose-500 bg-rose-50/50 dark:bg-rose-950/40 scale-[1.01]'
+            : 'border-slate-300 hover:border-rose-400 bg-white hover:bg-slate-50/50 dark:bg-slate-900/90 dark:border-slate-700 dark:hover:bg-slate-800/80 dark:hover:border-rose-500 shadow-sm'
         }`}
       >
         <input
@@ -130,26 +130,26 @@ export default function FileUploader({
           className="hidden"
         />
 
-        <div className="w-16 h-16 mx-auto mb-3.5 rounded-2xl bg-rose-50 flex items-center justify-center text-rose-500 shadow-sm group-hover:scale-110 transition-transform">
+        <div className="w-16 h-16 mx-auto mb-3.5 rounded-2xl bg-rose-50 dark:bg-rose-950/50 flex items-center justify-center text-rose-500 dark:text-rose-400 shadow-sm group-hover:scale-110 transition-transform">
           <UploadCloud className="w-8 h-8" />
         </div>
 
-        <h3 className="text-lg sm:text-xl font-bold text-slate-800 mb-1">
+        <h3 className="text-lg sm:text-xl font-bold text-slate-800 dark:text-white mb-1">
           Drag & drop your files here
         </h3>
-        <p className="text-sm text-slate-500 mb-4">
-          or <span className="text-rose-600 font-semibold hover:underline">browse files</span> from your computer or phone
+        <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
+          or <span className="text-rose-600 dark:text-rose-400 font-semibold hover:underline">browse files</span> from your computer or phone
         </p>
 
-        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-100/90 text-xs font-semibold text-slate-600 border border-slate-200/60">
+        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-100/90 dark:bg-slate-800/90 text-xs font-semibold text-slate-600 dark:text-slate-300 border border-slate-200/60 dark:border-slate-700">
           <span>Up to {MAX_FILES_COUNT} files</span>
-          <span className="text-slate-300">•</span>
-          <span className="text-rose-600 font-bold">
+          <span className="text-slate-300 dark:text-slate-600">•</span>
+          <span className="text-rose-600 dark:text-rose-400 font-bold">
             Max {activeLimit >= 1000 ? `${(activeLimit / 1024).toFixed(activeLimit % 1024 === 0 ? 0 : 1)} GB` : `${activeLimit} MB`} per file
           </span>
         </div>
 
-        <div className="mt-3 flex items-center justify-center gap-1.5 text-[11px] font-medium text-slate-500">
+        <div className="mt-3 flex items-center justify-center gap-1.5 text-[11px] font-medium text-slate-500 dark:text-slate-400">
           <Sparkles className="w-3.5 h-3.5 text-amber-500 shrink-0" />
           <span>Supports all file types: 4K Videos (MP4, MKV, MOV), Photos, Audio, Archives & Documents</span>
         </div>

@@ -97,7 +97,7 @@ export default function NotificationsDropdown({ user, onSelectShare }) {
     <div className="relative" ref={dropdownRef}>
       <button
         onClick={() => setOpen(!open)}
-        className="relative p-2 rounded-xl text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors"
+        className="relative p-2 rounded-xl text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
         aria-label="Notifications"
       >
         <Bell className="w-5 h-5" />
@@ -109,15 +109,15 @@ export default function NotificationsDropdown({ user, onSelectShare }) {
       </button>
 
       {open && (
-        <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-white rounded-2xl shadow-2xl border border-slate-100 z-50 overflow-hidden animate-fade-in">
+        <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-100 dark:border-slate-800 z-50 overflow-hidden animate-fade-in">
           {/* Header */}
-          <div className="flex items-center justify-between px-4 py-3 bg-slate-50 border-b border-slate-100">
-            <span className="text-xs font-bold text-slate-800">Notifications</span>
+          <div className="flex items-center justify-between px-4 py-3 bg-slate-50 dark:bg-slate-800/80 border-b border-slate-100 dark:border-slate-700">
+            <span className="text-xs font-bold text-slate-800 dark:text-white">Notifications</span>
             <div className="flex items-center gap-2">
               {unreadCount > 0 && (
                 <button
                   onClick={handleMarkAll}
-                  className="text-[11px] font-semibold text-rose-600 hover:text-rose-700 flex items-center gap-1"
+                  className="text-[11px] font-semibold text-rose-600 dark:text-rose-400 hover:text-rose-700 flex items-center gap-1"
                   title="Mark all notifications as read"
                 >
                   <CheckCheck className="w-3.5 h-3.5" />
@@ -127,7 +127,7 @@ export default function NotificationsDropdown({ user, onSelectShare }) {
               {notifications.length > 0 && (
                 <button
                   onClick={handleClearAll}
-                  className="text-[11px] font-semibold text-slate-400 hover:text-rose-600 flex items-center gap-0.5 ml-1 transition-colors"
+                  className="text-[11px] font-semibold text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 flex items-center gap-0.5 ml-1 transition-colors"
                   title="Clear all notifications"
                 >
                   <Trash2 className="w-3 h-3" />
@@ -138,9 +138,9 @@ export default function NotificationsDropdown({ user, onSelectShare }) {
           </div>
 
           {/* List */}
-          <div className="max-h-80 overflow-y-auto divide-y divide-slate-50">
+          <div className="max-h-80 overflow-y-auto divide-y divide-slate-50 dark:divide-slate-800">
             {notifications.length === 0 ? (
-              <div className="p-8 text-center text-slate-400 text-xs">
+              <div className="p-8 text-center text-slate-400 dark:text-slate-500 text-xs">
                 No notifications yet.
               </div>
             ) : (
@@ -148,38 +148,38 @@ export default function NotificationsDropdown({ user, onSelectShare }) {
                 <div
                   key={n.id}
                   onClick={() => handleItemClick(n)}
-                  className={`group p-3.5 hover:bg-slate-50 cursor-pointer transition-colors flex items-start gap-3 relative ${
-                    !n.isRead ? 'bg-rose-50/30' : ''
+                  className={`group p-3.5 hover:bg-slate-50 dark:hover:bg-slate-800/60 cursor-pointer transition-colors flex items-start gap-3 relative ${
+                    !n.isRead ? 'bg-rose-50/30 dark:bg-rose-950/20' : ''
                   }`}
                 >
-                  <div className="p-2 rounded-xl bg-slate-100 text-slate-600 shrink-0 mt-0.5">
+                  <div className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 shrink-0 mt-0.5">
                     {n.type === 'file_downloaded' ? (
-                      <FileDown className="w-4 h-4 text-emerald-600" />
+                      <FileDown className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                     ) : n.type === 'transfer_revoked' ? (
-                      <ShieldAlert className="w-4 h-4 text-rose-600" />
+                      <ShieldAlert className="w-4 h-4 text-rose-600 dark:text-rose-400" />
                     ) : n.type === 'group_invited' ? (
-                      <Users className="w-4 h-4 text-blue-600" />
+                      <Users className="w-4 h-4 text-blue-600 dark:text-blue-400" />
                     ) : (
-                      <Clock className="w-4 h-4 text-rose-600" />
+                      <Clock className="w-4 h-4 text-rose-600 dark:text-rose-400" />
                     )}
                   </div>
                   <div className="flex-1 min-w-0 pr-6">
-                    <div className="text-xs font-bold text-slate-800 truncate">{n.title}</div>
-                    <div className="text-[11px] text-slate-500 mt-0.5 line-clamp-2">
+                    <div className="text-xs font-bold text-slate-800 dark:text-white truncate">{n.title}</div>
+                    <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 line-clamp-2">
                       {n.message}
                     </div>
-                    <div className="text-[10px] text-slate-400 mt-1">
+                    <div className="text-[10px] text-slate-400 dark:text-slate-500 mt-1">
                       {new Date(n.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                     </div>
                   </div>
                   
                   <div className="flex items-center gap-1.5 shrink-0">
                     {!n.isRead && (
-                      <span className="w-2 h-2 rounded-full bg-rose-600 shrink-0"></span>
+                      <span className="w-2 h-2 rounded-full bg-rose-600 dark:bg-rose-500 shrink-0"></span>
                     )}
                     <button
                       onClick={(e) => handleDeleteOne(n.id, e)}
-                      className="opacity-0 group-hover:opacity-100 p-1 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-slate-200/60 transition-all"
+                      className="opacity-0 group-hover:opacity-100 p-1 rounded-lg text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-slate-200/60 dark:hover:bg-slate-700 transition-all"
                       title="Delete notification"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
