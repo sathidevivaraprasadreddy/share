@@ -58,6 +58,7 @@ export default function TransferDashboard({
   const [sendContentType, setSendContentType] = useState('files'); // 'files' | 'text'
   const [textNoteContent, setTextNoteContent] = useState('');
   const [textNotePassword, setTextNotePassword] = useState('');
+  const [textNotePasswordEnabled, setTextNotePasswordEnabled] = useState(false);
 
   // Direct share specific state
   const [recipientsInput, setRecipientsInput] = useState('');
@@ -120,6 +121,9 @@ export default function TransferDashboard({
 
   const handleClearFiles = () => {
     setFiles([]);
+    setFileNote('');
+    setFilePassword('');
+    setBurnOnDownload(false);
   };
 
   // Autocomplete suggestions for direct-to-inbox recipients
@@ -299,6 +303,7 @@ export default function TransferDashboard({
 
         setTextNoteContent('');
         setTextNotePassword('');
+        setTextNotePasswordEnabled(false);
         playSuccessChime();
         onShareCompleted(result);
       } else {
@@ -476,6 +481,13 @@ export default function TransferDashboard({
               <div className="relative">
                 <input
                   type="text"
+                  id="directRecipientsInput"
+                  name="quickshare_direct_recipients_search"
+                  autoComplete="off"
+                  autoCorrect="off"
+                  spellCheck="false"
+                  data-lpignore="true"
+                  data-1p-ignore="true"
                   placeholder="e.g. @24kb1a05xx, alice, bob"
                   value={recipientsInput}
                   onChange={(e) => setRecipientsInput(e.target.value)}
@@ -666,16 +678,46 @@ export default function TransferDashboard({
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">
-                    Password Protection (Optional)
-                  </label>
-                  <input
-                    type="password"
-                    value={textNotePassword}
-                    onChange={(e) => setTextNotePassword(e.target.value)}
-                    placeholder="Optional secret password"
-                    className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-rose-500/20"
-                  />
+                  <div className="flex items-center justify-between mb-1">
+                    <label htmlFor="textNotePasswordToggle" className="cursor-pointer flex items-center gap-1.5 select-none">
+                      <input
+                        type="checkbox"
+                        id="textNotePasswordToggle"
+                        checked={textNotePasswordEnabled}
+                        onChange={(e) => {
+                          const checked = e.target.checked;
+                          setTextNotePasswordEnabled(checked);
+                          if (!checked) setTextNotePassword('');
+                        }}
+                        className="w-3.5 h-3.5 rounded text-rose-600 focus:ring-rose-500 border-slate-300 dark:border-slate-700 cursor-pointer"
+                      />
+                      <span className="text-xs font-semibold text-slate-600 dark:text-slate-300">
+                        Password Protection (Optional)
+                      </span>
+                    </label>
+                  </div>
+                  {textNotePasswordEnabled ? (
+                    <input
+                      type="password"
+                      id="textNoteSecurityPasscode"
+                      name="quickshare_note_secret_code"
+                      autoComplete="new-password"
+                      autoCorrect="off"
+                      autoCapitalize="off"
+                      spellCheck="false"
+                      data-lpignore="true"
+                      data-1p-ignore="true"
+                      value={textNotePassword}
+                      onChange={(e) => setTextNotePassword(e.target.value)}
+                      placeholder="Optional secret password"
+                      autoFocus
+                      className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-rose-500/20 font-medium"
+                    />
+                  ) : (
+                    <div className="px-3.5 py-2.5 bg-slate-50/50 dark:bg-slate-950/50 border border-dashed border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-400">
+                      Off by default (Public)
+                    </div>
+                  )}
                 </div>
               </div>
 
