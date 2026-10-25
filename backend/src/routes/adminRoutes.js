@@ -17,7 +17,11 @@ import {
   getAdminAuditLogs,
   deleteAuditLog,
   clearAuditLogs,
-  exportDataCsv
+  exportDataCsv,
+  getAdminGroupMessages,
+  deleteAdminGroupMessage,
+  getAdminGroups,
+  deleteAdminGroup
 } from '../controllers/adminController.js';
 import { authenticateAdmin } from '../middleware/authMiddleware.js';
 import { adminLoginLimiter } from '../middleware/rateLimiter.js';
@@ -57,5 +61,17 @@ router.post('/users/:id/change-password', authenticateAdmin, changeUserPasswordA
 router.get('/sessions', authenticateAdmin, getAdminSessions);
 router.get('/sessions/:token/download', authenticateAdmin, downloadSessionAsAdmin);
 router.post('/sessions/:token/revoke', authenticateAdmin, revokeSessionAsAdmin);
+
+// ==========================================
+// 5. User Chat Viewing & Moderation (Protected)
+// ==========================================
+router.get('/messages', authenticateAdmin, getAdminGroupMessages);
+router.delete('/messages/:id', authenticateAdmin, deleteAdminGroupMessage);
+
+// ==========================================
+// 6. Groups Governance (Protected)
+// ==========================================
+router.get('/groups', authenticateAdmin, getAdminGroups);
+router.delete('/groups/:id', authenticateAdmin, deleteAdminGroup);
 
 export default router;

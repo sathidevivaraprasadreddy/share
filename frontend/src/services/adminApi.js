@@ -158,3 +158,29 @@ export async function downloadAdminCsv(type) {
   a.remove();
   window.URL.revokeObjectURL(url);
 }
+
+// ==========================================
+// User Chat Viewing & Messages Moderation
+// ==========================================
+export async function getAdminMessages(params = {}) {
+  const res = await adminClient.get('/messages', { params });
+  return res.data;
+}
+
+export async function deleteAdminMessage(id) {
+  const res = await adminClient.delete(`/messages/${id}`);
+  return res.data;
+}
+
+// ==========================================
+// Groups Governance
+// ==========================================
+export async function getAdminGroups(params = {}) {
+  const res = await adminClient.get('/groups', { params });
+  return res.data;
+}
+
+export async function deleteAdminGroup(id) {
+  const res = await adminClient.delete(`/groups/${id}`);
+  return res.data;
+}

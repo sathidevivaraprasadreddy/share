@@ -18,7 +18,11 @@ import {
   getAdminAuditLogs,
   deleteAuditLog,
   clearAuditLogs,
-  downloadAdminCsv
+  downloadAdminCsv,
+  getAdminMessages,
+  deleteAdminMessage,
+  getAdminGroups,
+  deleteAdminGroup
 } from '../services/adminApi';
 import {
   ShieldCheck,
@@ -47,7 +51,10 @@ import {
   Trash2,
   Globe,
   Laptop,
-  MapPin
+  MapPin,
+  MessageSquare,
+  MessageCircle,
+  Hash
 } from 'lucide-react';
 import { formatBytes } from '../utils/format';
 
@@ -69,6 +76,8 @@ export default function AdminControlCenter({ onExit }) {
   const [sessionsList, setSessionsList] = useState([]);
   const [loginsList, setLoginsList] = useState([]);
   const [auditList, setAuditList] = useState([]);
+  const [messagesList, setMessagesList] = useState([]);
+  const [groupsList, setGroupsList] = useState([]);
   const [loadingData, setLoadingData] = useState(false);
 
   // Search filter
@@ -111,6 +120,12 @@ export default function AdminControlCenter({ onExit }) {
       } else if (activeTab === 'audit') {
         const res = await getAdminAuditLogs();
         if (res.success) setAuditList(res.logs);
+      } else if (activeTab === 'messages') {
+        const res = await getAdminMessages();
+        if (res.success) setMessagesList(res.messages || []);
+      } else if (activeTab === 'groups') {
+        const res = await getAdminGroups();
+        if (res.success) setGroupsList(res.groups || []);
       }
     } catch (err) {
       if (err.response?.status === 401 || err.response?.status === 403) {
@@ -301,6 +316,34 @@ export default function AdminControlCenter({ onExit }) {
       }
     } catch (err) {
       alert(err.response?.data?.error || 'Failed to clear audit logs.');
+    }
+  };
+
+  const handleDeleteMessage = async (id) => {
+    if (!window.confirm('Delete this user chat message permanently?')) return;
+    try {
+      const res = await deleteAdminMessage(id);
+      if (res.success) {
+        setMessagesList((prev) => prev.filter((m) => m.id !== id));
+        setActionMessage('Chat message permanently deleted.');
+        setTimeout(() => setActionMessage(null), 3000);
+      }
+    } catch (err) {
+      alert(err.response?.data?.error || 'Failed to delete chat message.');
+    }
+  };
+
+  const handleDeleteGroup = async (id, groupName) => {
+    if (!window.confirm(`Are you sure you want to disband the group "${groupName}"? All chat messages and memberships will be deleted.`)) return;
+    try {
+      const res = await deleteAdminGroup(id);
+      if (res.success) {
+        setGroupsList((prev) => prev.filter((g) => g.id !== id));
+        setActionMessage(`Group "${groupName}" disbanded.`);
+        setTimeout(() => setActionMessage(null), 3000);
+      }
+    } catch (err) {
+      alert(err.response?.data?.error || 'Failed to disband group.');
     }
   };
 
@@ -520,6 +563,8 @@ export default function AdminControlCenter({ onExit }) {
           <div className="flex items-center gap-1.5 overflow-x-auto">
             {[
               { id: 'overview', label: 'System Overview', icon: Activity },
+              { id: 'messages', label: 'User Chats', icon: MessageSquare },
+              { id: 'groups', label: 'Groups', icon: MessageCircle },
               { id: 'users', label: 'Registered Users', icon: Users },
               { id: 'sessions', label: 'Share Transfers', icon: Layers },
               { id: 'logins', label: 'Login History', icon: Clock },
@@ -548,12 +593,18 @@ export default function AdminControlCenter({ onExit }) {
           </div>
 
           <div className="flex items-center gap-2">
-            {(activeTab === 'users' || activeTab === 'sessions') && (
+            {(activeTab === 'users' || activeTab === 'sessions' || activeTab === 'messages' || activeTab === 'groups') && (
               <div className="relative">
                 <Search className="w-3.5 h-3.5 text-slate-500 absolute left-3 top-2.5" />
                 <input
                   type="text"
-                  placeholder="Filter by name / token / code..."
+                  placeholder={
+                    activeTab === 'messages'
+                      ? 'Search chat text / sender...'
+                      : activeTab === 'groups'
+                      ? 'Search group name / invite code...'
+                      : 'Filter by name / token / code...'
+                  }
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-8 pr-3 py-1.5 bg-slate-900 border border-slate-800 rounded-xl text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-rose-500 w-52 sm:w-64"
@@ -575,7 +626,7 @@ export default function AdminControlCenter({ onExit }) {
         {activeTab === 'overview' && overview && (
           <div className="space-y-6 animate-fade-in">
             {/* KPI Cards */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
               <div className="bg-slate-900/90 border border-slate-800 rounded-3xl p-5 space-y-2">
                 <div className="text-slate-400 text-xs font-semibold flex items-center justify-between">
                   <span>Registered Users</span>
@@ -625,6 +676,17 @@ export default function AdminControlCenter({ onExit }) {
                   {overview.securityEventsCount} security log events
                 </div>
               </div>
+
+              <div className="bg-slate-900/90 border border-slate-800 rounded-3xl p-5 space-y-2 col-span-2 md:col-span-1">
+                <div className="text-slate-400 text-xs font-semibold flex items-center justify-between">
+                  <span>Groups & Chats</span>
+                  <MessageCircle className="w-4 h-4 text-indigo-400" />
+                </div>
+                <div className="text-2xl font-black text-white">{overview.totalGroups || 0}</div>
+                <div className="text-[11px] text-slate-400">
+                  {overview.totalMessages || 0} chat messages sent
+                </div>
+              </div>
             </div>
 
             {/* Privacy Policy & Architectural Integrity Notice */}
@@ -636,6 +698,212 @@ export default function AdminControlCenter({ onExit }) {
               <p className="text-xs text-slate-400 leading-relaxed">
                 QuickShare is built with strict privacy guarantees. In compliance with applicable privacy laws and zero-knowledge transfer principles, the operator control center has zero visibility into file contents or end-to-end peer communications. Administrator powers are strictly limited to infrastructure health monitoring, abuse mitigation, storage quota governance, and revocation of compromised links.
               </p>
+            </div>
+          </div>
+        )}
+
+        {/* TAB: USER CHATS & MESSAGES */}
+        {activeTab === 'messages' && (
+          <div className="space-y-4 animate-fade-in">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-900/90 border border-slate-800 p-4 rounded-3xl">
+              <div>
+                <h2 className="text-base font-bold text-white flex items-center gap-2">
+                  <MessageSquare className="w-5 h-5 text-rose-500" />
+                  <span>User Chat Viewing & Moderation</span>
+                </h2>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Live monitoring of messages across all collaboration groups. Admin can purge violating content.
+                </p>
+              </div>
+              <div className="text-xs font-semibold px-3 py-1 bg-slate-800 text-slate-300 rounded-xl">
+                {messagesList.length} Messages
+              </div>
+            </div>
+
+            <div className="bg-slate-900/90 border border-slate-800 rounded-3xl overflow-hidden shadow-xl">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs text-slate-300">
+                  <thead className="bg-slate-800/80 text-[11px] font-bold uppercase tracking-wider text-slate-400 border-b border-slate-800">
+                    <tr>
+                      <th className="py-3 px-4">Group</th>
+                      <th className="py-3 px-4">Sender</th>
+                      <th className="py-3 px-4">Message Content</th>
+                      <th className="py-3 px-4">Timestamp</th>
+                      <th className="py-3 px-4 text-right">Moderation</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-800/60 font-mono">
+                    {messagesList
+                      .filter((m) => {
+                        if (!searchTerm) return true;
+                        const term = searchTerm.toLowerCase();
+                        return (
+                          (m.message || '').toLowerCase().includes(term) ||
+                          (m.username || '').toLowerCase().includes(term) ||
+                          (m.group_name || '').toLowerCase().includes(term)
+                        );
+                      })
+                      .map((msg) => (
+                        <tr key={msg.id} className="hover:bg-slate-800/40 transition-colors">
+                          <td className="py-3 px-4">
+                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-indigo-950/60 border border-indigo-800/70 text-indigo-300 font-sans font-bold text-[11px]">
+                              <Hash className="w-3 h-3 text-indigo-400" />
+                              <span>{msg.group_name || `Group #${msg.group_id}`}</span>
+                            </span>
+                          </td>
+                          <td className="py-3 px-4">
+                            <div className="flex items-center gap-2">
+                              <div
+                                className="w-7 h-7 rounded-xl flex items-center justify-center text-white font-bold text-xs shrink-0 shadow-xs"
+                                style={{ backgroundColor: msg.avatar_color || '#e11d48' }}
+                              >
+                                {(msg.username || 'U')[0].toUpperCase()}
+                              </div>
+                              <div className="font-sans">
+                                <div className="text-white font-semibold text-xs leading-none">
+                                  {msg.display_name || msg.username}
+                                </div>
+                                <div className="text-[10px] text-slate-400 mt-0.5 leading-none">
+                                  @{msg.username}
+                                </div>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="py-3 px-4 max-w-md font-sans">
+                            <div className="p-2.5 rounded-xl bg-slate-800/80 border border-slate-700/60 text-slate-200 text-xs break-words leading-relaxed">
+                              {msg.message}
+                            </div>
+                          </td>
+                          <td className="py-3 px-4 text-slate-400 text-[11px] whitespace-nowrap">
+                            {new Date(msg.created_at).toLocaleString([], {
+                              month: 'short',
+                              day: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })}
+                          </td>
+                          <td className="py-3 px-4 text-right">
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteMessage(msg.id)}
+                              className="p-1.5 rounded-lg bg-rose-950/60 hover:bg-rose-900 border border-rose-800/60 text-rose-300 hover:text-white transition-colors"
+                              title="Delete this message"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    {messagesList.length === 0 && (
+                      <tr>
+                        <td colSpan={5} className="py-12 text-center text-slate-500 font-sans">
+                          No group messages found.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* TAB: COLLABORATION GROUPS */}
+        {activeTab === 'groups' && (
+          <div className="space-y-4 animate-fade-in">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-900/90 border border-slate-800 p-4 rounded-3xl">
+              <div>
+                <h2 className="text-base font-bold text-white flex items-center gap-2">
+                  <MessageCircle className="w-5 h-5 text-indigo-400" />
+                  <span>Collaboration Groups Governance</span>
+                </h2>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Manage active rooms and groups. Disbanding removes group members, messages, and shares.
+                </p>
+              </div>
+              <div className="text-xs font-semibold px-3 py-1 bg-slate-800 text-slate-300 rounded-xl">
+                {groupsList.length} Groups
+              </div>
+            </div>
+
+            <div className="bg-slate-900/90 border border-slate-800 rounded-3xl overflow-hidden shadow-xl">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs text-slate-300">
+                  <thead className="bg-slate-800/80 text-[11px] font-bold uppercase tracking-wider text-slate-400 border-b border-slate-800">
+                    <tr>
+                      <th className="py-3 px-4">Group Name</th>
+                      <th className="py-3 px-4">Invite Code</th>
+                      <th className="py-3 px-4">Owner</th>
+                      <th className="py-3 px-4">Members</th>
+                      <th className="py-3 px-4">Files / Messages</th>
+                      <th className="py-3 px-4">Created Date</th>
+                      <th className="py-3 px-4 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-800/60 font-sans">
+                    {groupsList
+                      .filter((g) => {
+                        if (!searchTerm) return true;
+                        const term = searchTerm.toLowerCase();
+                        return (
+                          (g.name || '').toLowerCase().includes(term) ||
+                          (g.invite_code || '').toLowerCase().includes(term) ||
+                          (g.owner_username || '').toLowerCase().includes(term)
+                        );
+                      })
+                      .map((grp) => (
+                        <tr key={grp.id} className="hover:bg-slate-800/40 transition-colors">
+                          <td className="py-3 px-4">
+                            <div className="font-bold text-white text-xs">{grp.name}</div>
+                            {grp.description && (
+                              <div className="text-[11px] text-slate-400 truncate max-w-xs">
+                                {grp.description}
+                              </div>
+                            )}
+                          </td>
+                          <td className="py-3 px-4 font-mono font-bold text-indigo-400">
+                            {grp.invite_code || '—'}
+                          </td>
+                          <td className="py-3 px-4 text-slate-300">
+                            @{grp.owner_username || 'Unknown'}
+                          </td>
+                          <td className="py-3 px-4 text-slate-300 font-semibold">
+                            {grp.member_count || 1} members
+                          </td>
+                          <td className="py-3 px-4 text-slate-400 text-xs">
+                            <span className="text-emerald-400 font-semibold">{grp.file_count || 0} files</span>
+                            <span className="mx-1">•</span>
+                            <span className="text-indigo-400 font-semibold">{grp.message_count || 0} msgs</span>
+                          </td>
+                          <td className="py-3 px-4 text-slate-400 text-[11px] whitespace-nowrap">
+                            {new Date(grp.created_at).toLocaleDateString([], {
+                              month: 'short',
+                              day: 'numeric',
+                              year: 'numeric'
+                            })}
+                          </td>
+                          <td className="py-3 px-4 text-right">
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteGroup(grp.id, grp.name)}
+                              className="py-1 px-2.5 rounded-lg bg-rose-950/60 hover:bg-rose-900 border border-rose-800/60 text-rose-300 hover:text-white transition-colors text-[11px] font-bold inline-flex items-center gap-1"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                              <span>Disband</span>
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    {groupsList.length === 0 && (
+                      <tr>
+                        <td colSpan={7} className="py-12 text-center text-slate-500">
+                          No collaboration groups found.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         )}

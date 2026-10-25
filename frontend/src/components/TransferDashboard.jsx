@@ -335,11 +335,11 @@ export default function TransferDashboard({
       {activeTab === 'send' && (
         <div className="space-y-6">
           {/* Intro header */}
-          <div className="text-center space-y-1.5">
-            <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-900 dark:text-white tracking-tight">
-              Share anything, instantly.
+          <div className="text-center space-y-2">
+            <h1 className="text-3xl sm:text-4xl font-black text-slate-950 dark:text-white tracking-tight drop-shadow-xs">
+              Share anything, <span className="text-rose-600 dark:text-rose-500">instantly.</span>
             </h1>
-            <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 max-w-md mx-auto">
+            <p className="text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 max-w-md mx-auto">
               Send via 6-digit code, instant links, or directly to an inbox.
             </p>
           </div>

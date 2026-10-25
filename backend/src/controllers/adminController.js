@@ -266,10 +266,20 @@ export async function getAdminOverview(req, res, next) {
       WHERE status LIKE '%fail%' OR status LIKE '%locked%'
     `);
 
+    const [groupStats] = await db.query(`
+      SELECT COUNT(*) AS total_groups FROM groups
+    `);
+
+    const [messageStats] = await db.query(`
+      SELECT COUNT(*) AS total_messages FROM group_messages
+    `);
+
     const u = userStats[0] || {};
     const f = fileStats[0] || {};
     const s = sessionStats[0] || {};
     const sec = loginIncidents[0] || {};
+    const grp = groupStats[0] || {};
+    const msg = messageStats[0] || {};
 
     return res.json({
       success: true,
@@ -283,6 +293,8 @@ export async function getAdminOverview(req, res, next) {
         activeSessions: Number(s.active_sessions || 0),
         revokedSessions: Number(s.revoked_sessions || 0),
         totalDownloads: Number(s.total_downloads || 0),
+        totalGroups: Number(grp.total_groups || 0),
+        totalMessages: Number(msg.total_messages || 0),
         securityEventsCount: Number(sec.security_events || 0),
         serverTimestamp: new Date().toISOString()
       }
@@ -845,6 +857,169 @@ export async function exportDataCsv(req, res, next) {
     }
 
     return res.status(400).json({ success: false, error: 'Invalid export type. Use users, sessions, or audit.' });
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
+ * 12. User Chat & Messages Governance
+ */
+export async function getAdminGroupMessages(req, res, next) {
+  try {
+    const { groupId, search, limit = 100 } = req.query;
+    const db = getDbPool();
+
+    let sql = `
+      SELECT 
+        m.id,
+        m.group_id,
+        g.name AS group_name,
+        m.user_id,
+        u.username,
+        u.display_name,
+        u.avatar_color,
+        m.message,
+        m.created_at
+      FROM group_messages m
+      LEFT JOIN groups g ON m.group_id = g.id
+      LEFT JOIN users u ON m.user_id = u.id
+      WHERE 1=1
+    `;
+    const params = [];
+
+    if (groupId) {
+      sql += ` AND m.group_id = ?`;
+      params.push(groupId);
+    }
+
+    if (search && search.trim()) {
+      sql += ` AND (m.message LIKE ? OR u.username LIKE ? OR g.name LIKE ?)`;
+      const term = `%${search.trim()}%`;
+      params.push(term, term, term);
+    }
+
+    sql += ` ORDER BY m.created_at DESC LIMIT ?`;
+    params.push(Number(limit) || 100);
+
+    const [messages] = await db.query(sql, params);
+
+    return res.json({
+      success: true,
+      messages: messages || []
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function deleteAdminGroupMessage(req, res, next) {
+  try {
+    const messageId = req.params.id;
+    const db = getDbPool();
+
+    const [msg] = await db.query(`SELECT id, group_id, user_id, message FROM group_messages WHERE id = ?`, [messageId]);
+    if (!msg || msg.length === 0) {
+      return res.status(404).json({ success: false, error: 'Message not found.' });
+    }
+
+    await db.query(`DELETE FROM group_messages WHERE id = ?`, [messageId]);
+
+    await logAdminAudit(
+      req.admin.id,
+      req.admin.username,
+      'DELETE_GROUP_MESSAGE',
+      'message',
+      messageId,
+      `Admin deleted chat message in group ${msg[0].group_id}: "${msg[0].message?.substring(0, 50)}"`,
+      req
+    );
+
+    return res.json({
+      success: true,
+      message: 'Chat message deleted successfully.'
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
+ * 13. Groups Governance
+ */
+export async function getAdminGroups(req, res, next) {
+  try {
+    const { search, limit = 100 } = req.query;
+    const db = getDbPool();
+
+    let sql = `
+      SELECT 
+        g.id,
+        g.name,
+        g.description,
+        g.invite_code,
+        g.created_at,
+        g.owner_user_id,
+        u.username AS owner_username,
+        u.display_name AS owner_display_name,
+        (SELECT COUNT(*) FROM group_members gm WHERE gm.group_id = g.id) AS member_count,
+        (SELECT COUNT(*) FROM group_shares gs WHERE gs.group_id = g.id) AS file_count,
+        (SELECT COUNT(*) FROM group_messages gm WHERE gm.group_id = g.id) AS message_count
+      FROM groups g
+      LEFT JOIN users u ON g.owner_user_id = u.id
+      WHERE 1=1
+    `;
+    const params = [];
+
+    if (search && search.trim()) {
+      sql += ` AND (g.name LIKE ? OR g.invite_code LIKE ? OR u.username LIKE ?)`;
+      const term = `%${search.trim()}%`;
+      params.push(term, term, term);
+    }
+
+    sql += ` ORDER BY g.created_at DESC LIMIT ?`;
+    params.push(Number(limit) || 100);
+
+    const [groups] = await db.query(sql, params);
+
+    return res.json({
+      success: true,
+      groups: groups || []
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function deleteAdminGroup(req, res, next) {
+  try {
+    const groupId = req.params.id;
+    const db = getDbPool();
+
+    const [grp] = await db.query(`SELECT id, name FROM groups WHERE id = ?`, [groupId]);
+    if (!grp || grp.length === 0) {
+      return res.status(404).json({ success: false, error: 'Group not found.' });
+    }
+
+    await db.query(`DELETE FROM group_messages WHERE group_id = ?`, [groupId]);
+    await db.query(`DELETE FROM group_members WHERE group_id = ?`, [groupId]);
+    await db.query(`DELETE FROM group_shares WHERE group_id = ?`, [groupId]);
+    await db.query(`DELETE FROM groups WHERE id = ?`, [groupId]);
+
+    await logAdminAudit(
+      req.admin.id,
+      req.admin.username,
+      'DELETE_GROUP',
+      'group',
+      groupId,
+      `Admin disbanded group "${grp[0].name}" (ID ${groupId})`,
+      req
+    );
+
+    return res.json({
+      success: true,
+      message: `Group "${grp[0].name}" was disbanded successfully.`
+    });
   } catch (err) {
     next(err);
   }
