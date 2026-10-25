@@ -329,7 +329,8 @@ export async function createDirectShare(req, res, next) {
       revokeToken,
       sixCode,
       recipientCount: recipientUsers.length,
-      recipients: recipientUsers.map((r) => ({ id: r.id, username: r.username })),
+      recipients: recipientUsers.map((r) => r.username),
+      recipientDetails: recipientUsers.map((r) => ({ id: r.id, username: r.username, displayName: r.display_name })),
       fileCount: files.length,
       totalSizeBytes,
       expiresAt: expiresAt.toISOString()

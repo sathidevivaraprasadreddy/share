@@ -15,12 +15,16 @@ import {
   Archive,
   File,
   ArrowLeft,
+  ArrowRight,
   CheckCircle2,
   MessageSquare,
   Flame,
   Eye,
+  EyeOff,
   Copy,
-  Check
+  Check,
+  Lock,
+  ShieldCheck
 } from 'lucide-react';
 import {
   getSession,
@@ -65,6 +69,7 @@ export default function DownloadView({ token, onBackToUpload }) {
   const [countdown, setCountdown] = useState('');
   const [previewingFile, setPreviewingFile] = useState(null);
   const [copiedNote, setCopiedNote] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleCopyNote = async () => {
     if (!session?.note) return;
@@ -163,14 +168,14 @@ export default function DownloadView({ token, onBackToUpload }) {
   };
 
   // Loading state
-  if (loading) {
+  if (loading && !session && !requiresPassword) {
     return (
-      <div className="bg-white rounded-3xl border border-slate-200/90 shadow-sm p-12 text-center animate-fade-in">
-        <Loader2 className="w-10 h-10 text-rose-600 animate-spin mx-auto mb-4" />
-        <h3 className="text-lg font-semibold text-slate-800">
+      <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/90 dark:border-slate-800 shadow-sm p-12 text-center animate-fade-in max-w-md mx-auto">
+        <Loader2 className="w-10 h-10 text-rose-600 dark:text-rose-400 animate-spin mx-auto mb-4" />
+        <h3 className="text-lg font-semibold text-slate-800 dark:text-white">
           Fetching shared files...
         </h3>
-        <p className="text-xs text-slate-400 mt-1">Please wait a moment</p>
+        <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">Please wait a moment</p>
       </div>
     );
   }
@@ -178,35 +183,48 @@ export default function DownloadView({ token, onBackToUpload }) {
   // Password Required View
   if (requiresPassword) {
     return (
-      <div className="bg-white rounded-3xl border border-slate-200/90 shadow-sm p-8 sm:p-10 animate-fade-in max-w-md mx-auto text-center space-y-5">
-        <div className="w-16 h-16 bg-rose-50 text-rose-600 rounded-2xl flex items-center justify-center mx-auto shadow-inner">
+      <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/90 dark:border-slate-800 shadow-xl p-8 sm:p-10 animate-fade-in max-w-md mx-auto text-center space-y-6">
+        <div className="w-16 h-16 bg-rose-50 dark:bg-rose-950/50 text-rose-600 dark:text-rose-400 border border-rose-200/60 dark:border-rose-900/50 rounded-2xl flex items-center justify-center mx-auto shadow-inner">
           <Lock className="w-8 h-8" />
         </div>
         <div>
-          <h3 className="text-xl font-bold text-slate-900 tracking-tight">
+          <span className="text-[11px] font-bold uppercase tracking-wider text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/60 border border-rose-200/50 dark:border-rose-900/40 px-3 py-1 rounded-full">
+            Protected Share
+          </span>
+          <h3 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white tracking-tight mt-2.5">
             Password Protected
           </h3>
-          <p className="text-xs sm:text-sm text-slate-500 mt-1">
-            The sender has protected these files with a password. Please enter it below to download.
+          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1.5 leading-relaxed">
+            The sender has protected these files with a password. Enter it below to unlock and download.
           </p>
         </div>
 
         <form onSubmit={handleUnlock} className="space-y-4">
-          <input
-            type="password"
-            placeholder="Enter share password"
-            value={passwordInput}
-            onChange={(e) => {
-              setPasswordInput(e.target.value);
-              setPasswordError(null);
-            }}
-            autoFocus
-            className="w-full text-center text-sm py-3 px-4 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 transition-all font-medium"
-          />
+          <div className="relative">
+            <input
+              type={showPassword ? 'text' : 'password'}
+              placeholder="Enter share password"
+              value={passwordInput}
+              onChange={(e) => {
+                setPasswordInput(e.target.value);
+                setPasswordError(null);
+              }}
+              autoFocus
+              className="w-full text-center text-sm py-3.5 pl-4 pr-11 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/80 text-slate-900 dark:text-white focus:bg-white dark:focus:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 transition-all font-medium tracking-wide placeholder:tracking-normal"
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
+              title={showPassword ? 'Hide password' : 'Show password'}
+            >
+              {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+            </button>
+          </div>
 
           {passwordError && (
-            <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-center gap-2">
-              <AlertTriangle className="w-4 h-4 shrink-0" />
+            <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-900/60 text-rose-700 dark:text-rose-300 text-xs flex items-center justify-center gap-2">
+              <AlertTriangle className="w-4 h-4 shrink-0 text-rose-600 dark:text-rose-400" />
               <span>{passwordError}</span>
             </div>
           )}
@@ -214,12 +232,12 @@ export default function DownloadView({ token, onBackToUpload }) {
           <button
             type="submit"
             disabled={unlocking || !passwordInput.trim()}
-            className="w-full py-3 bg-gradient-to-r from-rose-600 to-rose-500 hover:from-rose-700 hover:to-rose-600 disabled:opacity-50 text-white font-semibold text-sm rounded-xl shadow-md shadow-rose-500/20 transition-all flex items-center justify-center gap-2"
+            className="w-full py-3.5 bg-gradient-to-r from-rose-600 to-rose-500 hover:from-rose-700 hover:to-rose-600 disabled:opacity-50 text-white font-bold text-sm rounded-xl shadow-md shadow-rose-500/20 hover:shadow-lg transition-all active:scale-[0.99] flex items-center justify-center gap-2"
           >
             {unlocking ? (
               <>
                 <Loader2 className="w-4 h-4 animate-spin" />
-                <span>Unlocking...</span>
+                <span>Verifying Password...</span>
               </>
             ) : (
               <>
@@ -233,7 +251,7 @@ export default function DownloadView({ token, onBackToUpload }) {
         <div className="pt-2">
           <button
             onClick={onBackToUpload}
-            className="inline-flex items-center gap-1.5 text-xs text-slate-400 hover:text-slate-600 transition-colors"
+            className="inline-flex items-center gap-1.5 text-xs text-slate-400 hover:text-slate-700 dark:text-slate-500 dark:hover:text-slate-300 transition-colors"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
             <span>Back to QuickShare</span>
@@ -282,6 +300,19 @@ export default function DownloadView({ token, onBackToUpload }) {
     );
   }
 
+  // Guard against null session while loading or in transition
+  if (!session) {
+    return (
+      <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/90 dark:border-slate-800 shadow-sm p-12 text-center animate-fade-in max-w-md mx-auto">
+        <Loader2 className="w-10 h-10 text-rose-600 dark:text-rose-400 animate-spin mx-auto mb-4" />
+        <h3 className="text-lg font-semibold text-slate-800 dark:text-white">
+          Loading transfer details...
+        </h3>
+        <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">Please wait a moment</p>
+      </div>
+    );
+  }
+
   return (
     <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/90 dark:border-slate-800 shadow-sm p-6 sm:p-8 animate-fade-in space-y-6">
       {/* Top Banner */}
@@ -294,7 +325,7 @@ export default function DownloadView({ token, onBackToUpload }) {
             {files.length === 1 ? '1 File Ready to Download' : `${files.length} Files Ready to Download`}
           </h2>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-            Available until {new Date(session.expiresAt).toLocaleDateString()} ({formatTimeRemaining(session.expiresAt)})
+            Available until {session?.expiresAt ? new Date(session.expiresAt).toLocaleDateString() : 'Expiry'} ({formatTimeRemaining(session?.expiresAt)})
           </p>
         </div>
 
@@ -313,7 +344,7 @@ export default function DownloadView({ token, onBackToUpload }) {
       </div>
 
       {/* Message / Shared Text Note from Sender */}
-      {session.note && (
+      {session?.note && (
         <div className="p-4 bg-amber-50/80 dark:bg-amber-950/40 border border-amber-200/80 dark:border-amber-800/60 rounded-2xl space-y-2">
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2 text-amber-900 dark:text-amber-200 font-bold text-xs uppercase tracking-wider">
@@ -336,7 +367,7 @@ export default function DownloadView({ token, onBackToUpload }) {
       )}
 
       {/* Self-Destruct Warning if maxDownloads === 1 */}
-      {session.maxDownloads === 1 && (
+      {session?.maxDownloads === 1 && (
         <div className="p-3.5 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/50 rounded-2xl flex items-center gap-2.5 text-xs text-rose-800 dark:text-rose-300">
           <Flame className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0 animate-pulse" />
           <span>
@@ -363,7 +394,7 @@ export default function DownloadView({ token, onBackToUpload }) {
             <span>Total Size</span>
           </div>
           <p className="text-sm sm:text-base font-bold text-slate-800 dark:text-white">
-            {formatFileSize(session.totalSizeBytes)}
+            {formatFileSize(session?.totalSizeBytes || 0)}
           </p>
         </div>
 
@@ -373,7 +404,7 @@ export default function DownloadView({ token, onBackToUpload }) {
             <span>Time Left</span>
           </div>
           <p className="text-sm sm:text-base font-bold text-rose-600 dark:text-rose-400 font-mono tracking-tight">
-            {countdown || formatTimeRemaining(session.expiresAt)}
+            {countdown || formatTimeRemaining(session?.expiresAt)}
           </p>
         </div>
       </div>

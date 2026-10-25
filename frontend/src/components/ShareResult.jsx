@@ -148,12 +148,28 @@ export default function ShareResult({
 
       {/* Direct Recipients Badge */}
       {result.recipients && result.recipients.length > 0 && (
-        <div className="p-3 bg-blue-50/80 dark:bg-blue-950/40 border border-blue-200/70 dark:border-blue-900/50 rounded-xl flex items-center justify-between">
-          <span className="text-xs text-blue-800 dark:text-blue-200 font-medium">
-            Sent to recipients: <strong className="font-semibold">{result.recipients.join(', ')}</strong>
-          </span>
-          <span className="text-[10px] font-bold bg-blue-100 dark:bg-blue-900/60 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded-full">
-            In-App Inbox Delivered
+        <div className="p-3.5 bg-blue-50/90 dark:bg-blue-950/50 border border-blue-200/80 dark:border-blue-900/60 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 shadow-xs">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs text-blue-800 dark:text-blue-200 font-semibold">
+              Delivered to inboxes:
+            </span>
+            <div className="flex flex-wrap items-center gap-1.5">
+              {(Array.isArray(result.recipients) ? result.recipients : [result.recipients]).map((r, i) => {
+                const name = typeof r === 'string' ? r.replace(/^@/, '') : (r?.username || r?.name || 'Classmate');
+                return (
+                  <span
+                    key={i}
+                    className="inline-flex items-center text-xs font-bold text-blue-800 dark:text-blue-100 bg-blue-100/90 dark:bg-blue-900/80 px-2.5 py-1 rounded-xl border border-blue-200 dark:border-blue-800 shadow-2xs"
+                  >
+                    @{name}
+                  </span>
+                );
+              })}
+            </div>
+          </div>
+          <span className="text-[10px] font-bold uppercase tracking-wider bg-emerald-100 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-300 px-3 py-1 rounded-full border border-emerald-200 dark:border-emerald-800/80 self-start sm:self-auto flex items-center gap-1">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+            Inbox Delivered
           </span>
         </div>
       )}

@@ -51,6 +51,7 @@ export default function TransferDashboard({
   const [maxFileSizeMb, setMaxFileSizeMb] = useState(100);
   const [expiryHours, setExpiryHours] = useState(24);
   const [fileNote, setFileNote] = useState('');
+  const [filePassword, setFilePassword] = useState('');
   const [burnOnDownload, setBurnOnDownload] = useState(false);
 
   // Text & Quick Note sharing state
@@ -195,15 +196,20 @@ export default function TransferDashboard({
           {
             expiryHours,
             note: fileNote.trim() || undefined,
+            password: filePassword.trim() || undefined,
             burnOnDownload
           },
           (progress) => setUploadProgress(progress)
         );
 
         if (result.success) {
-          onSuccess(`Successfully sent files to ${result.recipients.join(', ')}!`);
+          const recipientStr = (Array.isArray(result.recipients) ? result.recipients : [])
+            .map((r) => (typeof r === 'string' ? (r.startsWith('@') ? r : `@${r}`) : `@${r?.username || 'Classmate'}`))
+            .join(', ');
+          onSuccess(`Successfully sent files to ${recipientStr || 'recipient inboxes'}!`);
           setFiles([]);
           setFileNote('');
+          setFilePassword('');
           setRecipientsInput('');
           setBurnOnDownload(false);
           onShareCompleted({
@@ -216,6 +222,7 @@ export default function TransferDashboard({
         const options = {
           expiryHours,
           note: fileNote.trim() || undefined,
+          password: filePassword.trim() || undefined,
           burnOnDownload
         };
 
@@ -225,6 +232,7 @@ export default function TransferDashboard({
 
         if (result.success) {
           setFileNote('');
+          setFilePassword('');
           setBurnOnDownload(false);
           saveRecentTransfer({
             shareToken: result.shareToken,
@@ -606,6 +614,8 @@ export default function TransferDashboard({
                     setExpiryHours={setExpiryHours}
                     note={fileNote}
                     setNote={setFileNote}
+                    password={filePassword}
+                    setPassword={setFilePassword}
                     burnOnDownload={burnOnDownload}
                     setBurnOnDownload={setBurnOnDownload}
                   />
