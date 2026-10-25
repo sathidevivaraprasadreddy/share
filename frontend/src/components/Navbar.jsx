@@ -33,7 +33,8 @@ export default function Navbar({
   onSelectShare,
   serverHealthy,
   darkMode,
-  onToggleDarkMode
+  onToggleDarkMode,
+  unreadInboxCount = 0
 }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -98,6 +99,11 @@ export default function Navbar({
                 >
                   <Icon className={`w-3.5 h-3.5 ${isActive ? 'text-rose-600 dark:text-rose-400' : 'text-slate-400'}`} />
                   <span>{item.label}</span>
+                  {item.id === 'inbox' && unreadInboxCount > 0 && (
+                    <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-600 text-white animate-pulse">
+                      {unreadInboxCount}
+                    </span>
+                  )}
                 </button>
               );
             })}
@@ -266,6 +272,11 @@ export default function Navbar({
                 <div className="flex items-center gap-2.5">
                   <Icon className={`w-4 h-4 ${isActive ? 'text-rose-600 dark:text-rose-400' : 'text-slate-400'}`} />
                   <span>{item.label}</span>
+                  {item.id === 'inbox' && unreadInboxCount > 0 && (
+                    <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-600 text-white animate-pulse">
+                      {unreadInboxCount}
+                    </span>
+                  )}
                 </div>
                 {item.requireAuth && !currentUser && (
                   <span className="text-[10px] bg-slate-100 dark:bg-slate-800 text-slate-500 px-1.5 py-0.5 rounded font-medium">

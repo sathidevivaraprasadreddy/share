@@ -9,13 +9,13 @@ export async function getInbox(req, res, next) {
     const { filter = 'all' } = req.query; // all, unread, pinned, archived
     const db = getDbPool();
 
-    let statusCondition = "r.status IN ('active', 'pinned')";
+    let statusCondition = "r.status IN ('active', 'pinned', 'accepted')";
     if (filter === 'archived') {
       statusCondition = "r.status = 'archived'";
     } else if (filter === 'pinned') {
       statusCondition = "r.status = 'pinned'";
     } else if (filter === 'unread') {
-      statusCondition = "r.status IN ('active', 'pinned') AND r.is_read = 0";
+      statusCondition = "r.status IN ('active', 'pinned', 'accepted') AND r.is_read = 0";
     }
 
     const [rows] = await db.query(
@@ -111,7 +111,7 @@ export async function updateInboxItem(req, res, next) {
       params.push(isRead ? 1 : 0);
     }
 
-    if (status && ['active', 'pinned', 'archived'].includes(status)) {
+    if (status && ['active', 'pinned', 'archived', 'accepted', 'declined'].includes(status)) {
       updates.push('status = ?');
       params.push(status);
     }

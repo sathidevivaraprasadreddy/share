@@ -12,7 +12,8 @@ import MyFilesView from './components/MyFilesView';
 import GroupsView from './components/GroupsView';
 import ActivityView from './components/ActivityView';
 import AdminControlCenter from './components/AdminControlCenter';
-import { checkHealth, getMe, logoutUser, revokeSession } from './services/api';
+import { checkHealth, getMe, logoutUser, revokeSession, getInbox } from './services/api';
+import { playNotificationPing } from './utils/audio';
 import { AlertCircle, CheckCircle, ShieldCheck } from 'lucide-react';
 
 export default function App() {
@@ -90,6 +91,42 @@ export default function App() {
   const [errorMessage, setErrorMessage] = useState(null);
   const [successNotification, setSuccessNotification] = useState(null);
   const [serverHealthy, setServerHealthy] = useState(null);
+  const [unreadInboxCount, setUnreadInboxCount] = useState(0);
+
+  // Live In-App Notification & Audio Ping for direct-to-inbox transfers
+  useEffect(() => {
+    if (!currentUser) {
+      setUnreadInboxCount(0);
+      return;
+    }
+
+    let isMounted = true;
+    let prevCount = null;
+
+    async function pollInbox() {
+      try {
+        const res = await getInbox('unread');
+        if (res.success && isMounted) {
+          const count = res.count || 0;
+          setUnreadInboxCount(count);
+          if (prevCount !== null && count > prevCount) {
+            playNotificationPing();
+            setSuccessNotification('You received a new direct transfer in your Inbox!');
+            setTimeout(() => setSuccessNotification(null), 5000);
+          }
+          prevCount = count;
+        }
+      } catch {}
+    }
+
+    pollInbox();
+    const timer = setInterval(pollInbox, 12000);
+
+    return () => {
+      isMounted = false;
+      clearInterval(timer);
+    };
+  }, [currentUser]);
 
   // Check URL query parameters and verify user auth session
   useEffect(() => {
@@ -264,6 +301,7 @@ export default function App() {
         serverHealthy={serverHealthy}
         darkMode={darkMode}
         onToggleDarkMode={toggleDarkMode}
+        unreadInboxCount={unreadInboxCount}
       />
 
       {/* Main Content Area */}
@@ -310,6 +348,7 @@ export default function App() {
                 <TransferDashboard
                   currentUser={currentUser}
                   activeShare={shareResult}
+                  darkMode={darkMode}
                   onShareCompleted={handleShareCompleted}
                   onViewActiveShare={() => setIsViewingShareResult(true)}
                   onReceiveToken={(token) => setTokenParam(token)}

@@ -17,7 +17,8 @@ import {
   verifyPhoneOtp,
   sendEmailOtp,
   verifyEmailOtp,
-  deleteAccount
+  deleteAccount,
+  searchUsers
 } from '../controllers/authController.js';
 import {
   lookupSixDigitCode,
@@ -94,6 +95,7 @@ router.delete('/auth/account', authenticateRequired, deleteAccount);
 router.get('/auth/me', authenticateRequired, getMe);
 router.put('/auth/profile', authenticateRequired, updateProfile);
 router.put('/auth/change-password', authenticateRequired, changePassword);
+router.get('/users/search', authenticateRequired, searchUsers);
 
 // ==========================================
 // 3. Sharing & Transfers (Guest & Authenticated)

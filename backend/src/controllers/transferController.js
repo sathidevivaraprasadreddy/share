@@ -163,7 +163,7 @@ export async function createDirectShare(req, res, next) {
     });
   }
 
-  const { recipients, note, expiryHours, password } = req.body;
+  const { recipients, note, expiryHours, password, burnOnDownload } = req.body;
   if (!recipients) {
     return res.status(400).json({
       success: false,
@@ -224,18 +224,22 @@ export async function createDirectShare(req, res, next) {
   try {
     await connection.beginTransaction();
 
+    const isBurn = burnOnDownload === 'true' || burnOnDownload === true;
+    const maxDownloads = isBurn ? 1 : 0;
+
     // 1. Create share_session record
     const [sessionResult] = await connection.query(
       `INSERT INTO share_sessions 
-       (user_id, share_token, revoke_token, six_code, password_hash, total_size_bytes, 
+       (user_id, share_token, revoke_token, six_code, password_hash, max_downloads, total_size_bytes, 
         file_count, share_type, note, expires_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, 'direct', ?, ?)`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'direct', ?, ?)`,
       [
         senderId,
         shareToken,
         revokeToken,
         sixCode,
         passwordHash,
+        maxDownloads,
         totalSizeBytes,
         files.length,
         note ? note.trim() : null,

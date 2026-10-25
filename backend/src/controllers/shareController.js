@@ -34,8 +34,11 @@ export async function createShareSession(req, res, next) {
     expiryHours = DEFAULT_EXPIRY_HOURS;
   }
 
-  const { password, maxDownloads, note } = req.body;
-  const maxDl = parseInt(maxDownloads, 10) || 0;
+  const { password, maxDownloads, note, burnOnDownload } = req.body;
+  let maxDl = parseInt(maxDownloads, 10) || 0;
+  if (burnOnDownload === 'true' || burnOnDownload === true) {
+    maxDl = 1;
+  }
   const passwordHash = password && password.trim().length > 0 ? await bcrypt.hash(password.trim(), 10) : null;
 
   const expiresAt = new Date(Date.now() + expiryHours * 60 * 60 * 1000);

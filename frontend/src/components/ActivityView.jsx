@@ -12,7 +12,9 @@ import {
   Trash2,
   ShieldAlert,
   Clock,
-  FileCheck
+  FileCheck,
+  Check,
+  CheckCheck
 } from 'lucide-react';
 import { formatBytes } from '../utils/format';
 
@@ -149,6 +151,42 @@ export default function ActivityView({ user, onRequireAuth }) {
                   </div>
 
                   <div className="flex items-center gap-3 self-end sm:self-auto">
+                    {log.recipient && (
+                      <span
+                        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold ${
+                          log.recipient.isDownloaded
+                            ? 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400'
+                            : log.recipient.isRead
+                            ? 'bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400'
+                            : 'bg-slate-100 dark:bg-slate-800 text-slate-500'
+                        }`}
+                        title={
+                          log.recipient.isDownloaded
+                            ? `Downloaded by @${log.recipient.username}`
+                            : log.recipient.isRead
+                            ? `Delivered to @${log.recipient.username}`
+                            : `Sent to @${log.recipient.username}`
+                        }
+                      >
+                        {log.recipient.isDownloaded ? (
+                          <>
+                            <CheckCheck className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                            <span>Downloaded</span>
+                          </>
+                        ) : log.recipient.isRead ? (
+                          <>
+                            <CheckCheck className="w-3.5 h-3.5 text-indigo-500" />
+                            <span>In Inbox</span>
+                          </>
+                        ) : (
+                          <>
+                            <Check className="w-3.5 h-3.5 text-slate-400" />
+                            <span>Sent</span>
+                          </>
+                        )}
+                      </span>
+                    )}
+
                     <div className="text-[11px] text-slate-400 font-mono flex items-center gap-1">
                       <Clock className="w-3 h-3" />
                       {new Date(log.createdAt).toLocaleString([], {

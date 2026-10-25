@@ -876,3 +876,39 @@ export async function deleteAccount(req, res, next) {
   }
 }
 
+/**
+ * 12. Search registered users for autocomplete
+ */
+export async function searchUsers(req, res, next) {
+  try {
+    const q = (req.query.q || '').trim();
+    if (!q || q.length < 1) {
+      return res.json({ success: true, users: [] });
+    }
+
+    const db = getDbPool();
+    const cleanQ = q.startsWith('@') ? q.slice(1) : q;
+    const term = `%${cleanQ}%`;
+
+    const [users] = await db.query(
+      `SELECT id, username, display_name, avatar_color 
+       FROM users 
+       WHERE (username LIKE ? OR display_name LIKE ?) AND is_suspended = 0
+       LIMIT 8`,
+      [term, term]
+    );
+
+    return res.json({
+      success: true,
+      users: (users || []).map((u) => ({
+        id: u.id,
+        username: u.username,
+        displayName: u.display_name || u.username,
+        avatarColor: u.avatar_color || '#e11d48'
+      }))
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+

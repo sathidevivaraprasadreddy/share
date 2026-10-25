@@ -27,12 +27,14 @@ import { playSuccessChime, playNotificationPing } from '../utils/audio';
 import {
   uploadFiles,
   createDirectShare,
-  lookupSixDigitCode
+  lookupSixDigitCode,
+  searchUsers
 } from '../services/api';
 
 export default function TransferDashboard({
   currentUser,
   activeShare,
+  darkMode,
   onShareCompleted,
   onViewActiveShare,
   onReceiveToken,
@@ -48,6 +50,8 @@ export default function TransferDashboard({
   const [files, setFiles] = useState([]);
   const [maxFileSizeMb, setMaxFileSizeMb] = useState(100);
   const [expiryHours, setExpiryHours] = useState(24);
+  const [fileNote, setFileNote] = useState('');
+  const [burnOnDownload, setBurnOnDownload] = useState(false);
 
   // Text & Quick Note sharing state
   const [sendContentType, setSendContentType] = useState('files'); // 'files' | 'text'
@@ -56,6 +60,8 @@ export default function TransferDashboard({
 
   // Direct share specific state
   const [recipientsInput, setRecipientsInput] = useState('');
+  const [userSuggestions, setUserSuggestions] = useState([]);
+  const [searchingUsers, setSearchingUsers] = useState(false);
 
   // Uploading state
   const [uploading, setUploading] = useState(false);
@@ -99,8 +105,58 @@ export default function TransferDashboard({
     setFiles((prev) => prev.filter((_, i) => i !== index));
   };
 
+  const handleRenameFile = (index, newName) => {
+    setFiles((prev) => {
+      const updated = [...prev];
+      const f = updated[index];
+      if (f) {
+        const renamed = new File([f], newName, { type: f.type, lastModified: f.lastModified });
+        updated[index] = renamed;
+      }
+      return updated;
+    });
+  };
+
   const handleClearFiles = () => {
     setFiles([]);
+  };
+
+  // Autocomplete suggestions for direct-to-inbox recipients
+  useEffect(() => {
+    if (sendMode !== 'direct') {
+      setUserSuggestions([]);
+      return;
+    }
+    const lastWord = recipientsInput.split(/[\s,]+/).pop()?.replace(/^@/, '').trim() || '';
+    if (lastWord.length < 1) {
+      setUserSuggestions([]);
+      return;
+    }
+    const timer = setTimeout(async () => {
+      try {
+        setSearchingUsers(true);
+        const res = await searchUsers(lastWord);
+        if (res.success) {
+          const filtered = (res.users || []).filter((u) => u.username !== currentUser?.username);
+          setUserSuggestions(filtered);
+        }
+      } catch (err) {
+        setUserSuggestions([]);
+      } finally {
+        setSearchingUsers(false);
+      }
+    }, 200);
+
+    return () => clearTimeout(timer);
+  }, [recipientsInput, sendMode, currentUser]);
+
+  const handleSelectSuggestion = (user) => {
+    const parts = recipientsInput.split(/[\s,]+/).map((s) => s.trim()).filter(Boolean);
+    parts.pop(); // remove incomplete query
+    parts.push(`@${user.username}`);
+    const nextVal = parts.join(', ') + ', ';
+    setRecipientsInput(nextVal);
+    setUserSuggestions([]);
   };
 
   // Perform upload based on selected mode
@@ -136,23 +192,31 @@ export default function TransferDashboard({
         const result = await createDirectShare(
           files,
           rawRecipients,
-          { expiryHours },
+          {
+            expiryHours,
+            note: fileNote.trim() || undefined,
+            burnOnDownload
+          },
           (progress) => setUploadProgress(progress)
         );
 
         if (result.success) {
           onSuccess(`Successfully sent files to ${result.recipients.join(', ')}!`);
           setFiles([]);
+          setFileNote('');
           setRecipientsInput('');
+          setBurnOnDownload(false);
           onShareCompleted({
             ...result,
             directShare: true
           });
         }
       } else {
-        // Standard Link / 6-Digit Code / Group Share
+        // Standard Link / 6-Digit Code
         const options = {
-          expiryHours
+          expiryHours,
+          note: fileNote.trim() || undefined,
+          burnOnDownload
         };
 
         const result = await uploadFiles(files, options, (progress) => {
@@ -160,6 +224,8 @@ export default function TransferDashboard({
         });
 
         if (result.success) {
+          setFileNote('');
+          setBurnOnDownload(false);
           saveRecentTransfer({
             shareToken: result.shareToken,
             sixCode: result.sixCode,
@@ -336,10 +402,16 @@ export default function TransferDashboard({
         <div className="space-y-6">
           {/* Intro header */}
           <div className="text-center space-y-2">
-            <h1 className="text-3xl sm:text-4xl font-black text-slate-950 dark:text-white tracking-tight drop-shadow-xs">
-              Share anything, <span className="text-rose-600 dark:text-rose-500">instantly.</span>
+            <h1
+              className="text-3xl sm:text-4xl font-black tracking-tight"
+              style={{ color: darkMode ? '#ffffff' : '#090d16' }}
+            >
+              Share anything, <span style={{ color: '#e11d48' }}>instantly.</span>
             </h1>
-            <p className="text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 max-w-md mx-auto">
+            <p
+              className="text-xs sm:text-sm font-semibold max-w-md mx-auto"
+              style={{ color: darkMode ? '#94a3b8' : '#334155' }}
+            >
               Send via 6-digit code, instant links, or directly to an inbox.
             </p>
           </div>
@@ -384,21 +456,62 @@ export default function TransferDashboard({
 
           {/* Mode-Specific Context Fields */}
           {sendMode === 'direct' && (
-            <div className="p-4 bg-white dark:bg-slate-900 rounded-2xl border border-rose-200 dark:border-rose-900/60 shadow-xs space-y-3">
+            <div className="p-4 bg-white dark:bg-slate-900 rounded-2xl border border-rose-200 dark:border-rose-900/60 shadow-xs space-y-3 relative">
               <div className="flex items-center justify-between">
                 <label className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
                   <UserCheck className="w-4 h-4 text-rose-600" />
                   <span>Send directly to registered user(s):</span>
                 </label>
-                <span className="text-[11px] text-slate-400">Comma separated usernames</span>
+                <span className="text-[11px] text-slate-400">Type username to see suggestions</span>
               </div>
-              <input
-                type="text"
-                placeholder="e.g. alice, bob, alex_dev"
-                value={recipientsInput}
-                onChange={(e) => setRecipientsInput(e.target.value)}
-                className="w-full text-xs sm:text-sm px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:bg-white dark:focus:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 transition-all"
-              />
+
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="e.g. @24kb1a05xx, alice, bob"
+                  value={recipientsInput}
+                  onChange={(e) => setRecipientsInput(e.target.value)}
+                  className="w-full text-xs sm:text-sm px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:bg-white dark:focus:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 transition-all font-mono"
+                />
+
+                {/* Autocomplete Suggestions Dropdown */}
+                {userSuggestions.length > 0 && (
+                  <div className="absolute left-0 right-0 top-full mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-xl z-30 overflow-hidden divide-y divide-slate-100 dark:divide-slate-700 animate-fade-in">
+                    <div className="px-3 py-1.5 text-[10px] uppercase font-bold tracking-wider text-slate-400 bg-slate-50 dark:bg-slate-800/80">
+                      Suggested Registered Users (Click to add)
+                    </div>
+                    {userSuggestions.map((u) => (
+                      <button
+                        key={u.id}
+                        type="button"
+                        onClick={() => handleSelectSuggestion(u)}
+                        className="w-full text-left px-3 py-2 flex items-center justify-between hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors group cursor-pointer"
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <div
+                            className="w-6 h-6 rounded-lg text-white font-bold text-xs flex items-center justify-center shrink-0 shadow-xs"
+                            style={{ backgroundColor: u.avatarColor || '#e11d48' }}
+                          >
+                            {(u.username || 'U')[0].toUpperCase()}
+                          </div>
+                          <div>
+                            <span className="text-xs font-semibold text-slate-900 dark:text-white">
+                              {u.displayName}
+                            </span>
+                            <span className="text-[11px] text-rose-600 dark:text-rose-400 font-mono ml-1.5">
+                              @{u.username}
+                            </span>
+                          </div>
+                        </div>
+                        <span className="text-[10px] text-slate-400 group-hover:text-rose-600 dark:group-hover:text-rose-400 font-semibold">
+                          + Add
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
               <p className="text-[11px] text-slate-500 dark:text-slate-400">
                 Transfers directly appear in recipient's in-app <strong>Inbox</strong> with status tracking.
               </p>
@@ -484,12 +597,17 @@ export default function TransferDashboard({
                   <FileList
                     files={files}
                     onRemoveFile={handleRemoveFile}
+                    onRenameFile={handleRenameFile}
                     onClearFiles={handleClearFiles}
                     onUpload={handleStartSend}
                     uploading={uploading}
                     uploadProgress={uploadProgress}
                     expiryHours={expiryHours}
                     setExpiryHours={setExpiryHours}
+                    note={fileNote}
+                    setNote={setFileNote}
+                    burnOnDownload={burnOnDownload}
+                    setBurnOnDownload={setBurnOnDownload}
                   />
                 </div>
               )}

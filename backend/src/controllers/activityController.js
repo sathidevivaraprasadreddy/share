@@ -10,9 +10,14 @@ export async function getActivityTimeline(req, res, next) {
 
     const [logs] = await db.query(
       `SELECT a.id, a.event_type, a.details, a.created_at,
-              s.share_token, s.six_code, s.file_count, s.total_size_bytes
+              s.share_token, s.six_code, s.file_count, s.total_size_bytes,
+              r.recipient_user_id, r.is_read AS recipient_read, r.is_downloaded AS recipient_downloaded,
+              r.downloaded_at AS recipient_downloaded_at,
+              ru.username AS recipient_username, ru.display_name AS recipient_display_name
        FROM activity_logs a
        LEFT JOIN share_sessions s ON a.session_id = s.id
+       LEFT JOIN share_recipients r ON s.id = r.session_id
+       LEFT JOIN users ru ON r.recipient_user_id = ru.id
        WHERE a.user_id = ?
        ORDER BY a.created_at DESC
        LIMIT 50`,
@@ -30,7 +35,16 @@ export async function getActivityTimeline(req, res, next) {
         shareToken: l.share_token,
         sixCode: l.six_code,
         fileCount: l.file_count,
-        totalSizeBytes: l.total_size_bytes
+        totalSizeBytes: l.total_size_bytes,
+        recipient: l.recipient_username
+          ? {
+              username: l.recipient_username,
+              displayName: l.recipient_display_name || l.recipient_username,
+              isRead: Boolean(l.recipient_read),
+              isDownloaded: Boolean(l.recipient_downloaded),
+              downloadedAt: l.recipient_downloaded_at
+            }
+          : null
       }))
     });
   } catch (err) {

@@ -115,6 +115,7 @@ export async function uploadFiles(files, options = {}, onProgress) {
   formData.append('expiryHours', opts.expiryHours || 24);
   if (opts.password) formData.append('password', opts.password);
   if (opts.maxDownloads) formData.append('maxDownloads', opts.maxDownloads);
+  if (opts.burnOnDownload) formData.append('burnOnDownload', 'true');
   if (opts.note) formData.append('note', opts.note);
 
   for (let i = 0; i < files.length; i++) {
@@ -172,6 +173,7 @@ export async function createDirectShare(files, recipients, options = {}, onProgr
   formData.append('expiryHours', options.expiryHours || 72);
   if (options.note) formData.append('note', options.note);
   if (options.password) formData.append('password', options.password);
+  if (options.burnOnDownload) formData.append('burnOnDownload', 'true');
 
   for (let i = 0; i < files.length; i++) {
     formData.append('files', files[i]);
@@ -189,6 +191,11 @@ export async function createDirectShare(files, recipients, options = {}, onProgr
     }
   });
 
+  return response.data;
+}
+
+export async function searchUsers(query) {
+  const response = await api.get('/users/search', { params: { q: query } });
   return response.data;
 }
 
