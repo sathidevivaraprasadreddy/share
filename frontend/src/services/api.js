@@ -321,6 +321,16 @@ export async function deleteGroupMessage(groupId, messageId) {
   return response.data;
 }
 
+export async function deleteGroupFile(groupId, fileId) {
+  const response = await api.delete(`/groups/${groupId}/files/${fileId}`);
+  return response.data;
+}
+
+export async function deleteGroupShare(groupId, shareId) {
+  const response = await api.delete(`/groups/${groupId}/shares/${shareId}`);
+  return response.data;
+}
+
 // ========================================================
 // 9. Activity & Notifications
 // ========================================================
@@ -410,6 +420,8 @@ export default {
   removeGroupMember,
   shareWithGroup,
   deleteGroup,
+  deleteGroupFile,
+  deleteGroupShare,
   leaveGroup,
   getGroupByInvite,
   joinGroupByInvite,

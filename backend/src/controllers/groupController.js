@@ -173,7 +173,7 @@ export async function getGroupDetails(req, res, next) {
           name: f.original_name,
           size: f.file_size,
           mimeType: f.mime_type,
-          isOwner: f.user_id === userId
+          isOwner: Boolean((f.user_id && f.user_id === userId) || (s.shared_by_user_id === userId))
         }))
       });
     }
@@ -698,6 +698,110 @@ export async function deleteGroupMessage(req, res, next) {
     return res.json({
       success: true,
       message: 'Message deleted successfully.'
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
+ * Delete a file shared in a group
+ * Allowed by: File uploader, Share creator, Group owner, or Admin
+ */
+export async function deleteGroupFile(req, res, next) {
+  try {
+    const groupId = parseInt(req.params.id, 10);
+    const fileId = req.params.fileId;
+    const userId = req.user.id;
+    const db = getDbPool();
+
+    // Check file and group association
+    const [fileRows] = await db.query(
+      `SELECT sf.id, sf.stored_name, sf.file_size, sf.user_id, sf.session_id,
+              gs.id AS group_share_id, gs.shared_by_user_id,
+              g.owner_user_id AS group_owner_id
+       FROM share_files sf
+       JOIN group_shares gs ON sf.session_id = gs.session_id
+       JOIN groups g ON gs.group_id = g.id
+       WHERE sf.id = ? AND gs.group_id = ? AND sf.is_deleted = 0`,
+      [fileId, groupId]
+    );
+
+    if (fileRows.length === 0) {
+      return res.status(404).json({ success: false, error: 'File not found in this group.' });
+    }
+
+    const fileRec = fileRows[0];
+    const isFileOwner = Boolean(fileRec.user_id && fileRec.user_id === userId);
+    const isShareOwner = Boolean(fileRec.shared_by_user_id && fileRec.shared_by_user_id === userId);
+    const isGroupOwner = Boolean(fileRec.group_owner_id && fileRec.group_owner_id === userId);
+    const isAdmin = Boolean(req.user && (req.user.is_admin || req.user.isAdmin));
+
+    if (!isFileOwner && !isShareOwner && !isGroupOwner && !isAdmin && fileRec.user_id !== null) {
+      return res.status(403).json({ success: false, error: 'You do not have permission to delete this file.' });
+    }
+
+    // Soft delete file
+    await db.query(`UPDATE share_files SET is_deleted = 1 WHERE id = ?`, [fileId]);
+
+    // Check if any active files remain in this session
+    const [remaining] = await db.query(
+      `SELECT COUNT(*) AS activeCount FROM share_files WHERE session_id = ? AND is_deleted = 0`,
+      [fileRec.session_id]
+    );
+
+    const activeCount = remaining[0]?.activeCount ?? remaining[0]?.['COUNT(*)'] ?? 0;
+    if (activeCount === 0) {
+      await db.query(`UPDATE group_shares SET is_revoked = 1 WHERE id = ?`, [fileRec.group_share_id]);
+    }
+
+    return res.json({
+      success: true,
+      message: 'File deleted from group successfully.'
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
+ * Remove an entire share batch from a group
+ * Allowed by: User who shared it, Group owner, or Admin
+ */
+export async function deleteGroupShare(req, res, next) {
+  try {
+    const groupId = parseInt(req.params.id, 10);
+    const shareId = req.params.shareId;
+    const userId = req.user.id;
+    const db = getDbPool();
+
+    const [shareRows] = await db.query(
+      `SELECT gs.id, gs.session_id, gs.shared_by_user_id, g.owner_user_id AS group_owner_id
+       FROM group_shares gs
+       JOIN groups g ON gs.group_id = g.id
+       WHERE gs.id = ? AND gs.group_id = ?`,
+      [shareId, groupId]
+    );
+
+    if (shareRows.length === 0) {
+      return res.status(404).json({ success: false, error: 'Share batch not found in this group.' });
+    }
+
+    const shareRec = shareRows[0];
+    const isShareOwner = Boolean(shareRec.shared_by_user_id && shareRec.shared_by_user_id === userId);
+    const isGroupOwner = Boolean(shareRec.group_owner_id && shareRec.group_owner_id === userId);
+    const isAdmin = Boolean(req.user && (req.user.is_admin || req.user.isAdmin));
+
+    if (!isShareOwner && !isGroupOwner && !isAdmin) {
+      return res.status(403).json({ success: false, error: 'You do not have permission to delete this share.' });
+    }
+
+    await db.query(`UPDATE group_shares SET is_revoked = 1 WHERE id = ?`, [shareId]);
+    await db.query(`UPDATE share_files SET is_deleted = 1 WHERE session_id = ?`, [shareRec.session_id]);
+
+    return res.json({
+      success: true,
+      message: 'Share batch deleted from group successfully.'
     });
   } catch (err) {
     next(err);

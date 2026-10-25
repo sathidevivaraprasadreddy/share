@@ -401,6 +401,24 @@ describe('QuickShare Full Platform Advanced Test Suite', () => {
       expect(res.body.success).toBe(true);
     });
 
+    it('Alice deletes an individual file from the group', async () => {
+      const details = await request(app)
+        .get(`/api/groups/${groupId}`)
+        .set('Authorization', `Bearer ${user1Token}`);
+
+      const share = details.body.group.shares[0];
+      expect(share).toBeDefined();
+      expect(share.files.length).toBeGreaterThan(0);
+      const fileId = share.files[0].id;
+
+      const delRes = await request(app)
+        .delete(`/api/groups/${groupId}/files/${fileId}`)
+        .set('Authorization', `Bearer ${user1Token}`);
+
+      expect(delRes.status).toBe(200);
+      expect(delRes.body.success).toBe(true);
+    });
+
     it('Bob leaves the group and loses access', async () => {
       const leaveRes = await request(app)
         .delete(`/api/groups/${groupId}/members/${user2.id}`)

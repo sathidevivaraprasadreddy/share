@@ -15,7 +15,9 @@ import {
   deleteGroupMessage,
   uploadFiles,
   shareWithGroup,
-  renameFile
+  renameFile,
+  deleteGroupFile,
+  deleteGroupShare
 } from '../services/api';
 import {
   Users,
@@ -267,6 +269,56 @@ export default function GroupsView({
       setRenamingSharedFile(false);
       setEditingSharedFileId(null);
       setSharedFileRenameInput('');
+    }
+  };
+
+  const handleDeleteGroupFile = async (fileId, shareId) => {
+    if (!selectedGroup) return;
+    if (!window.confirm('Are you sure you want to delete this file from the group?')) return;
+    try {
+      const res = await deleteGroupFile(selectedGroup.id, fileId);
+      if (res.success) {
+        setGroupDetails((prev) => {
+          if (!prev || !prev.shares) return prev;
+          const updatedShares = prev.shares
+            .map((share) => {
+              if (share.id !== shareId) return share;
+              const remaining = (share.files || []).filter((f) => f.id !== fileId);
+              return {
+                ...share,
+                files: remaining,
+                fileCount: remaining.length
+              };
+            })
+            .filter((share) => share.files && share.files.length > 0);
+          return { ...prev, shares: updatedShares };
+        });
+        setSuccess('File deleted from group.');
+        setTimeout(() => setSuccess(null), 3000);
+      }
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to delete file from group.');
+    }
+  };
+
+  const handleDeleteGroupShare = async (shareId) => {
+    if (!selectedGroup) return;
+    if (!window.confirm('Are you sure you want to delete all files in this share from the group?')) return;
+    try {
+      const res = await deleteGroupShare(selectedGroup.id, shareId);
+      if (res.success) {
+        setGroupDetails((prev) => {
+          if (!prev || !prev.shares) return prev;
+          return {
+            ...prev,
+            shares: prev.shares.filter((s) => s.id !== shareId)
+          };
+        });
+        setSuccess('Share batch removed from group.');
+        setTimeout(() => setSuccess(null), 3000);
+      }
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to delete share from group.');
     }
   };
 
@@ -1179,22 +1231,35 @@ export default function GroupsView({
                           </div>
                         </div>
 
-                        <a
-                          href={getZipDownloadUrl(share.shareToken)}
-                          download
-                          className="py-1.5 px-3 bg-white dark:bg-slate-700 hover:bg-slate-100 dark:hover:bg-slate-600 border border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-200 text-xs font-semibold rounded-xl flex items-center gap-1 shadow-xs shrink-0"
-                        >
-                          <Download className="w-3.5 h-3.5" />
-                          Download ZIP
-                        </a>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <a
+                            href={getZipDownloadUrl(share.shareToken)}
+                            download
+                            className="py-1.5 px-3 bg-white dark:bg-slate-700 hover:bg-slate-100 dark:hover:bg-slate-600 border border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-200 text-xs font-semibold rounded-xl flex items-center gap-1 shadow-xs"
+                          >
+                            <Download className="w-3.5 h-3.5" />
+                            Download ZIP
+                          </a>
+                          {(share.sharedByUserId === user?.id || groupDetails?.isOwner || user?.is_admin || user?.isAdmin) && (
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteGroupShare(share.id)}
+                              className="p-1.5 bg-white dark:bg-slate-700 hover:bg-rose-50 dark:hover:bg-rose-950/40 border border-slate-200 dark:border-slate-600 text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 rounded-xl transition-colors shadow-xs"
+                              title="Delete all files in this share from group"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
                       </div>
 
-                      {/* Individual Files with Rename capability */}
+                      {/* Individual Files with Rename and Delete capability */}
                       {share.files && share.files.length > 0 && (
                         <div className="pt-2 border-t border-slate-200/60 dark:border-slate-700/60 space-y-1.5">
                           {share.files.map((file) => {
                             const isEditingThisFile = editingSharedFileId === file.id;
                             const canRename = file.isOwner || groupDetails?.isOwner;
+                            const canDelete = file.isOwner || groupDetails?.isOwner || user?.is_admin || user?.isAdmin;
                             const displayName = file.name || 'File';
                             return (
                               <div
@@ -1263,12 +1328,22 @@ export default function GroupsView({
                                   </span>
                                   <a
                                     href={getSingleFileDownloadUrl(share.shareToken, file.id)}
-                                    download={file.name}
+                                    download={displayName}
                                     className="p-1 text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 transition-colors"
                                     title="Download this file"
                                   >
                                     <Download className="w-3.5 h-3.5" />
                                   </a>
+                                  {canDelete && (
+                                    <button
+                                      type="button"
+                                      onClick={() => handleDeleteGroupFile(file.id, share.id)}
+                                      className="p-1 text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 rounded transition-colors hover:bg-rose-50 dark:hover:bg-rose-950/40"
+                                      title="Delete file from group"
+                                    >
+                                      <Trash2 className="w-3.5 h-3.5" />
+                                    </button>
+                                  )}
                                 </div>
                               </div>
                             );
