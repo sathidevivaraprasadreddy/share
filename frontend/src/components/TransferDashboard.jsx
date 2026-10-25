@@ -5,7 +5,6 @@ import {
   Wifi,
   Clock,
   UserCheck,
-  Users,
   Shield,
   AlertCircle,
   ArrowRight,
@@ -28,9 +27,7 @@ import { playSuccessChime, playNotificationPing } from '../utils/audio';
 import {
   uploadFiles,
   createDirectShare,
-  lookupSixDigitCode,
-  getGroups,
-  shareWithGroup
+  lookupSixDigitCode
 } from '../services/api';
 
 export default function TransferDashboard({
@@ -45,7 +42,7 @@ export default function TransferDashboard({
   onSuccess
 }) {
   const [activeTab, setActiveTab] = useState('send'); // 'send' | 'receive' | 'p2p'
-  const [sendMode, setSendMode] = useState('link'); // 'link' | 'direct' | 'group'
+  const [sendMode, setSendMode] = useState('link'); // 'link' | 'direct'
 
   // Files state
   const [files, setFiles] = useState([]);
@@ -59,11 +56,6 @@ export default function TransferDashboard({
 
   // Direct share specific state
   const [recipientsInput, setRecipientsInput] = useState('');
-
-  // Group share specific state
-  const [groups, setGroups] = useState([]);
-  const [selectedGroupId, setSelectedGroupId] = useState('');
-  const [loadingGroups, setLoadingGroups] = useState(false);
 
   // Uploading state
   const [uploading, setUploading] = useState(false);
@@ -93,29 +85,6 @@ export default function TransferDashboard({
       return updated;
     });
   };
-
-  // Load groups if logged in and user switches to group mode
-  useEffect(() => {
-    if (sendMode === 'group' && currentUser) {
-      async function loadUserGroups() {
-        try {
-          setLoadingGroups(true);
-          const res = await getGroups();
-          if (res.success) {
-            setGroups(res.groups || []);
-            if (res.groups && res.groups.length > 0) {
-              setSelectedGroupId(res.groups[0].id);
-            }
-          }
-        } catch (err) {
-          console.error('Failed to load groups:', err);
-        } finally {
-          setLoadingGroups(false);
-        }
-      }
-      loadUserGroups();
-    }
-  }, [sendMode, currentUser]);
 
   const handleFilesSelected = (newFiles) => {
     onError(null);
@@ -202,16 +171,6 @@ export default function TransferDashboard({
             date: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
           });
 
-          // If group share mode was chosen, associate session with group
-          if (sendMode === 'group' && selectedGroupId) {
-            try {
-              await shareWithGroup(selectedGroupId, result.shareToken);
-              onSuccess('Files uploaded and shared to your group!');
-            } catch (gErr) {
-              console.warn('Group share link warning:', gErr);
-            }
-          }
-
           setFiles([]);
           playSuccessChime();
           onShareCompleted(result);
@@ -263,13 +222,6 @@ export default function TransferDashboard({
           type: 'sent',
           date: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
         });
-
-        // If group share mode was chosen, associate session with group
-        if (sendMode === 'group' && selectedGroupId) {
-          try {
-            await shareWithGroup(selectedGroupId, result.shareToken);
-          } catch {}
-        }
 
         setTextNoteContent('');
         setTextNotePassword('');
@@ -388,7 +340,7 @@ export default function TransferDashboard({
               Share anything, instantly.
             </h1>
             <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 max-w-md mx-auto">
-              Send via 6-digit code, instant links, direct user inboxes, or collaboration groups.
+              Send via 6-digit code, instant links, or directly to an inbox.
             </p>
           </div>
 
@@ -428,29 +380,6 @@ export default function TransferDashboard({
                 </span>
               )}
             </button>
-
-            <button
-              onClick={() => {
-                if (!currentUser) {
-                  onRequestAuth();
-                } else {
-                  setSendMode('group');
-                }
-              }}
-              className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all ${
-                sendMode === 'group'
-                  ? 'bg-rose-600 text-white shadow-xs shadow-rose-500/20'
-                  : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200/90 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700'
-              }`}
-            >
-              <Users className="w-3.5 h-3.5" />
-              <span>Share to Group</span>
-              {!currentUser && (
-                <span className="text-[10px] bg-amber-100 text-amber-800 px-1 rounded font-bold">
-                  Login
-                </span>
-              )}
-            </button>
           </div>
 
           {/* Mode-Specific Context Fields */}
@@ -473,37 +402,6 @@ export default function TransferDashboard({
               <p className="text-[11px] text-slate-500 dark:text-slate-400">
                 Transfers directly appear in recipient's in-app <strong>Inbox</strong> with status tracking.
               </p>
-            </div>
-          )}
-
-          {sendMode === 'group' && (
-            <div className="p-4 bg-white dark:bg-slate-900 rounded-2xl border border-rose-200 dark:border-rose-900/60 shadow-xs space-y-3">
-              <label className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
-                <Users className="w-4 h-4 text-rose-600" />
-                <span>Select Target Group:</span>
-              </label>
-              {loadingGroups ? (
-                <div className="flex items-center gap-2 text-xs text-slate-500 py-2">
-                  <Loader2 className="w-4 h-4 animate-spin text-rose-500" />
-                  <span>Loading your groups...</span>
-                </div>
-              ) : groups.length === 0 ? (
-                <p className="text-xs text-slate-500 dark:text-slate-400">
-                  You haven't joined any groups yet. Create one from the <strong>Groups</strong> tab first!
-                </p>
-              ) : (
-                <select
-                  value={selectedGroupId}
-                  onChange={(e) => setSelectedGroupId(e.target.value)}
-                  className="w-full text-xs sm:text-sm px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-rose-500/20"
-                >
-                  {groups.map((g) => (
-                    <option key={g.id} value={g.id}>
-                      {g.name} ({g.member_count || 1} members)
-                    </option>
-                  ))}
-                </select>
-              )}
             </div>
           )}
 
