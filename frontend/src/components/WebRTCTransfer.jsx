@@ -36,6 +36,16 @@ export default function WebRTCTransfer({ onSwitchToStandardUpload }) {
   };
 
   const getWsUrl = () => {
+    if (import.meta.env.VITE_WS_URL) {
+      return import.meta.env.VITE_WS_URL;
+    }
+    if (import.meta.env.VITE_API_URL) {
+      try {
+        const u = new URL(import.meta.env.VITE_API_URL);
+        const protocol = u.protocol === 'https:' ? 'wss:' : 'ws:';
+        return `${protocol}//${u.host}/ws`;
+      } catch {}
+    }
     const loc = window.location;
     const protocol = loc.protocol === 'https:' ? 'wss:' : 'ws:';
     // If backend is running on port 5050 in dev
