@@ -14,7 +14,7 @@ import ActivityView from './components/ActivityView';
 import AdminControlCenter from './components/AdminControlCenter';
 import { checkHealth, getMe, logoutUser, revokeSession, getInbox } from './services/api';
 import { playNotificationPing } from './utils/audio';
-import { AlertCircle, CheckCircle, ShieldCheck } from 'lucide-react';
+import { AlertCircle, CheckCircle, ShieldCheck, Upload, WifiOff, X } from 'lucide-react';
 
 export default function App() {
   const [currentView, setCurrentView] = useState('transfer'); // 'transfer' | 'inbox' | 'my-files' | 'groups' | 'activity'
@@ -92,6 +92,81 @@ export default function App() {
   const [successNotification, setSuccessNotification] = useState(null);
   const [serverHealthy, setServerHealthy] = useState(null);
   const [unreadInboxCount, setUnreadInboxCount] = useState(0);
+
+  // Network connection monitor
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
+
+  useEffect(() => {
+    const handleOnline = () => {
+      setIsOnline(true);
+      setSuccessNotification('You are back online!');
+      setTimeout(() => setSuccessNotification(null), 3000);
+    };
+    const handleOffline = () => {
+      setIsOnline(false);
+      setErrorMessage('Internet disconnected. You are currently offline.');
+    };
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
+
+  // Global Drag-and-Drop anywhere across the application
+  const [isDraggingOverWindow, setIsDraggingOverWindow] = useState(false);
+  const [globalDroppedFiles, setGlobalDroppedFiles] = useState([]);
+  const dragCounter = React.useRef(0);
+
+  useEffect(() => {
+    const handleDragEnter = (e) => {
+      e.preventDefault();
+      dragCounter.current += 1;
+      if (e.dataTransfer && e.dataTransfer.types && Array.from(e.dataTransfer.types).includes('Files')) {
+        setIsDraggingOverWindow(true);
+      }
+    };
+
+    const handleDragLeave = (e) => {
+      e.preventDefault();
+      dragCounter.current -= 1;
+      if (dragCounter.current <= 0) {
+        setIsDraggingOverWindow(false);
+        dragCounter.current = 0;
+      }
+    };
+
+    const handleDragOver = (e) => {
+      e.preventDefault();
+    };
+
+    const handleDrop = (e) => {
+      e.preventDefault();
+      dragCounter.current = 0;
+      setIsDraggingOverWindow(false);
+
+      if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+        const filesArray = Array.from(e.dataTransfer.files);
+        setGlobalDroppedFiles(filesArray);
+        setCurrentView('transfer');
+        setIsViewingShareResult(false);
+        setTokenParam(null);
+      }
+    };
+
+    window.addEventListener('dragenter', handleDragEnter);
+    window.addEventListener('dragleave', handleDragLeave);
+    window.addEventListener('dragover', handleDragOver);
+    window.addEventListener('drop', handleDrop);
+
+    return () => {
+      window.removeEventListener('dragenter', handleDragEnter);
+      window.removeEventListener('dragleave', handleDragLeave);
+      window.removeEventListener('dragover', handleDragOver);
+      window.removeEventListener('drop', handleDrop);
+    };
+  }, []);
 
   // Live In-App Notification & Audio Ping for direct-to-inbox transfers
   useEffect(() => {
@@ -304,30 +379,63 @@ export default function App() {
         unreadInboxCount={unreadInboxCount}
       />
 
+      {/* Offline Status Warning Bar */}
+      {!isOnline && (
+        <div className="bg-amber-500 text-slate-950 text-xs font-bold py-1.5 px-4 text-center flex items-center justify-center gap-2 shadow-sm animate-fade-in">
+          <WifiOff className="w-3.5 h-3.5" />
+          <span>You are currently offline. Transfers will automatically resume once reconnected.</span>
+        </div>
+      )}
+
+      {/* Floating Notifications (Zero Layout Shift) */}
+      {(errorMessage || successNotification) && (
+        <div className="fixed top-5 left-1/2 -translate-x-1/2 z-50 max-w-md w-[92%] sm:w-auto animate-toast pointer-events-auto">
+          {errorMessage && (
+            <div className="p-3.5 sm:px-4 sm:py-3 rounded-2xl bg-white dark:bg-slate-900 border border-rose-200 dark:border-rose-900/60 shadow-xl text-rose-700 dark:text-rose-300 flex items-center gap-3">
+              <AlertCircle className="w-5 h-5 shrink-0 text-rose-500" />
+              <div className="text-xs sm:text-sm font-semibold flex-1 leading-snug">{errorMessage}</div>
+              <button
+                onClick={() => setErrorMessage(null)}
+                className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          )}
+          {successNotification && (
+            <div className="p-3.5 sm:px-4 sm:py-3 rounded-2xl bg-white dark:bg-slate-900 border border-emerald-200 dark:border-emerald-900/60 shadow-xl text-emerald-800 dark:text-emerald-300 flex items-center gap-3">
+              <CheckCircle className="w-5 h-5 shrink-0 text-emerald-500" />
+              <div className="text-xs sm:text-sm font-semibold flex-1 leading-snug">{successNotification}</div>
+              <button
+                onClick={() => setSuccessNotification(null)}
+                className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Global Drag & Drop Overlay */}
+      {isDraggingOverWindow && (
+        <div className="fixed inset-0 z-50 bg-slate-950/75 backdrop-blur-md flex items-center justify-center p-6 animate-fade-in pointer-events-none">
+          <div className="w-full max-w-md p-10 rounded-3xl border-2 border-dashed border-rose-400 bg-white/10 text-white text-center space-y-4 shadow-2xl">
+            <div className="w-16 h-16 rounded-2xl bg-rose-500/30 text-rose-400 flex items-center justify-center mx-auto">
+              <Upload className="w-8 h-8 animate-bounce" />
+            </div>
+            <div>
+              <h3 className="text-xl font-bold">Drop files anywhere to share</h3>
+              <p className="text-xs sm:text-sm text-slate-300 mt-1">
+                Release your files to start uploading instantly with QuickShare
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Main Content Area */}
       <main className="flex-1 max-w-4xl w-full mx-auto px-4 py-8 sm:py-10 flex flex-col">
-        {/* Alerts / Error Notification */}
-        {errorMessage && (
-          <div className="mb-6 p-4 rounded-2xl bg-rose-50 border border-rose-200/90 text-rose-700 flex items-start gap-3 shadow-sm animate-fade-in">
-            <AlertCircle className="w-5 h-5 shrink-0 mt-0.5 text-rose-600" />
-            <div className="text-xs sm:text-sm font-medium flex-1">{errorMessage}</div>
-            <button
-              onClick={() => setErrorMessage(null)}
-              className="text-rose-400 hover:text-rose-700 text-xs font-bold"
-            >
-              ✕
-            </button>
-          </div>
-        )}
-
-        {/* Success Notification */}
-        {successNotification && (
-          <div className="mb-6 p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-800 flex items-start gap-3 shadow-sm animate-fade-in">
-            <CheckCircle className="w-5 h-5 shrink-0 mt-0.5 text-emerald-600" />
-            <div className="text-xs sm:text-sm font-medium flex-1">{successNotification}</div>
-          </div>
-        )}
-
         {/* Dynamic View Router */}
         {tokenParam ? (
           <DownloadView
@@ -349,6 +457,8 @@ export default function App() {
                   currentUser={currentUser}
                   activeShare={shareResult}
                   darkMode={darkMode}
+                  externalFiles={globalDroppedFiles}
+                  onClearExternalFiles={() => setGlobalDroppedFiles([])}
                   onShareCompleted={handleShareCompleted}
                   onViewActiveShare={() => setIsViewingShareResult(true)}
                   onReceiveToken={(token) => setTokenParam(token)}

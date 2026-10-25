@@ -35,6 +35,8 @@ export default function TransferDashboard({
   currentUser,
   activeShare,
   darkMode,
+  externalFiles,
+  onClearExternalFiles,
   onShareCompleted,
   onViewActiveShare,
   onReceiveToken,
@@ -102,6 +104,14 @@ export default function TransferDashboard({
       return [...prev, ...filtered];
     });
   };
+
+  // Sync files dropped anywhere across the application
+  useEffect(() => {
+    if (externalFiles && externalFiles.length > 0) {
+      handleFilesSelected(externalFiles);
+      if (onClearExternalFiles) onClearExternalFiles();
+    }
+  }, [externalFiles]);
 
   const handleRemoveFile = (index) => {
     setFiles((prev) => prev.filter((_, i) => i !== index));

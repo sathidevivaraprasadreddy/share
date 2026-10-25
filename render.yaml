@@ -1,12 +1,11 @@
 services:
   - type: web
-    name: quickshare-api
+    name: quickshare-app
     env: node
     plan: free
     region: oregon
-    rootDir: backend
-    buildCommand: npm install
-    startCommand: node src/server.js
+    buildCommand: npm run build
+    startCommand: npm start
     envVars:
       - key: NODE_ENV
         value: production
