@@ -1,12 +1,12 @@
 # QuickShare 🚀
 > **Advanced, 100% Free & Open-Source Ephemeral File-Sharing Platform**  
-> Direct peer-to-peer WebRTC data channels, 6-digit transfer codes, cryptographic share links, in-app recipient inboxes, collaboration groups, and zero-cost cloud deployment.
+> Direct peer-to-peer WebRTC data channels, 6-digit transfer codes, cryptographic share links, in-app recipient inboxes, WhatsApp-style group collaboration, PWA mobile installability, and zero-cost cloud deployment.
 
 ![QuickShare Banner](https://img.shields.io/badge/Status-Production%20Ready-emerald)
-![Free Stack](https://img.shields.io/badge/Cost-₹0%20Zero%20Paid%20Tiers-rose)
-![Node Engine](https://img.shields.io/badge/Node.js-v24%20Native%20SQLite%20Ready-blue)
+![Free Stack](https://img.shields.io/badge/Cost-%E2%82%B90%20Zero%20Paid%20Tiers-rose)
+![Node Engine](https://img.shields.io/badge/Node.js-v22%2B%20Native%20SQLite%20Ready-blue)
 ![WebRTC](https://img.shields.io/badge/WebRTC-P2P%20DataChannels-indigo)
-![Tests](https://img.shields.io/badge/Tests-55%2F55%20Passing-emerald)
+![Tests](https://img.shields.io/badge/Tests-56%2F56%20Passing-emerald)
 
 ---
 
@@ -14,8 +14,8 @@
 - **Frontend Web Application:** [https://quickshare-azure.vercel.app/](https://quickshare-azure.vercel.app/)
 - **Backend REST & WebSocket API:** [https://quickshare-api-hbal.onrender.com/](https://quickshare-api-hbal.onrender.com/)
 - **WebRTC Signaling Endpoint:** `wss://quickshare-api-hbal.onrender.com/ws`
-- **Cloud Database:** TiDB Serverless (Cloud MySQL 5.7/8.0 wire-compatible)
-- **Persistent Cloud Storage:** Supabase Object Storage / Cloudflare R2 (S3-compatible)
+- **Cloud Database:** Built-in Zero-Config SQLite or TiDB Serverless (Cloud MySQL wire-compatible)
+- **Persistent Cloud Storage:** Supabase Object Storage / Cloudflare R2 (S3-compatible) or Local
 - **GitHub Repository:** [https://github.com/sathidevivaraprasadreddy/share](https://github.com/sathidevivaraprasadreddy/share)
 
 ---
@@ -27,19 +27,19 @@
 4. [Technology Architecture](#-technology-architecture)
 5. [₹0 Zero-Cost Cloud Stack & Provider Quotas](#-0-zero-cost-cloud-stack--provider-quotas)
 6. [Zero-Config Local Development](#-zero-config-local-development)
-7. [Production Deployment Guide](#-production-deployment-guide)
-8. [Automated Testing Suite](#-automated-testing-suite)
+7. [Production Deployment Guide (1-Click Unified or Split)](#-production-deployment-guide)
+8. [Automated Testing Suite (56/56 Tests)](#-automated-testing-suite)
 9. [Security, Privacy & Data Lifecycle](#-security-privacy--data-lifecycle)
 
 ---
 
 ## 🌟 Overview & Product Vision
 
-QuickShare is designed for individual users, friends, families, remote teams, and communities who need to share files securely across devices without forced signups, intrusive ads, or costly subscriptions.
+QuickShare is designed for individual users, students, teams, and communities who need to share files securely across devices without forced signups, intrusive ads, or costly subscriptions.
 
 QuickShare supports **both guests and registered users**:
-- **Guest Mode:** No account required. Drop files, get an instant 6-digit code or share link, and transfer immediately.
-- **Registered Account (Free):** Unlocks persistent file management, custom avatars, recipient in-app inboxes, team groups, audit logs, and up to 1 GB of personal cloud storage.
+- **Guest Mode:** No account required. Drop files anywhere, get an instant 6-digit code or share link, and transfer immediately.
+- **Registered Account (Free):** Unlocks persistent file management, custom avatars, recipient in-app inboxes, team collaboration groups with live chat, audit logs, and personal cloud storage.
 
 ---
 
@@ -56,12 +56,13 @@ Unlike traditional platforms that rely strictly on public URLs, QuickShare provi
 - **Benefits:** Files stream directly from RAM to RAM without passing through or consuming server storage quotas. Perfect for transferring large files across computers, laptops, and smartphones on the same Wi-Fi or across the internet.
 
 ### 3. 📥 Direct In-App Inbox Delivery
-- **How it works:** Authenticated senders can dispatch files directly into any registered user's inbox (e.g. `@alice`, `@bob`).
-- **Inbox Management:** Recipients can pin, archive, read, and non-destructively remove files from their inbox. Removing an inbox entry never deletes the sender's original file.
+- **How it works:** Authenticated senders can dispatch files directly into any registered user's inbox (e.g. `@alice`, `@bob`) with username autocomplete suggestions.
+- **WhatsApp Checkmarks:** Live delivery status icons: **✓ Sent**, **✓✓ Delivered to Inbox**, **✓✓ (Green) Downloaded**.
+- **Privacy & Safety:** Recipients can preview descriptions, and accept or decline transfers. Supports optional password protection and burn-on-download (auto-delete after first download).
 
 ### 4. 🔗 Ephemeral Links & Mobile QR Codes
 - **How it works:** Generates high-entropy 128-bit unguessable tokens (`crypto.randomBytes(16)`) and high-contrast QR codes for instant smartphone camera scanning.
-- **Protection:** Supports optional bcrypt password protection, configurable download limits (e.g. 1-time self-destruct download), and customizable expiry windows (1h, 6h, 24h, 3d, 7d).
+- **Protection:** Supports optional bcrypt password protection, configurable download limits, and customizable expiry windows (1h, 6h, 24h, 3d, 7d).
 
 ---
 
@@ -72,111 +73,157 @@ QuickShare Navigation
 ├── 📤 Transfer Dashboard
 │   ├── Send (Link & 6-Digit Code / Direct to Inbox / Group Share)
 │   ├── Receive (6-Digit Code lookup & instant retrieve)
+│   ├── Global Drag & Drop Overlay (Drop files anywhere to share)
 │   └── Quick P2P (WebRTC Browser-to-Browser Data Channels)
-├── 📥 Recipient Inbox (Directly received files with Read, Pin, Archive)
-├── 📁 My Files (File manager, categories, inline rename, trash bin & restore)
-├── 👥 Collaboration Groups (Group file sharing, member invitations)
+├── 📥 Recipient Inbox (Directly received files with WhatsApp checkmarks, notes & rename)
+├── 📁 My Files (Cloud drive, category filters, inline rename, trash bin & restore)
+├── 👥 Collaboration Groups (Group chat with emojis, file attachments, rename & delete)
+├── 🛡️ Admin Control Center (/control-center - MFA, user moderation, audit logs & CSV export)
 ├── ⏱️ Activity Timeline (Audit logs for uploads, downloads, and revocations)
-├── 🔔 Notifications (Live transfer alerts & unread badge)
-└── ⚙️ Profile & Quota (Avatar color picker, storage meter, password change, Danger Zone account deletion)
+├── 🔔 Notifications (Live transfer alerts, audio pings & unread badge)
+└── ⚙️ Profile & Quota (Avatar color picker, storage meter, password change, Danger Zone)
 ```
 
-- **🔑 Real-World Multi-Option Authentication (Anti-Spoofing & Free Tier):**
-  - **Official Google OAuth 2.0 (Google Identity Services):** Real Google Sign-In popup with cryptographic JWT token verification against Google's servers (`https://oauth2.googleapis.com/tokeninfo`). Strictly forbids plain-text email spoofing.
-  - **Real Email OTP (100% Free):** Generates cryptographic 6-digit one-time codes dispatched directly to the user's Gmail or email inbox via SMTP / Nodemailer.
-  - **Cellular SMS OTP:** Supports real SMS delivery to physical mobile phones via Fast2SMS (free signup credits in India) and Twilio. Protects client security by never leaking OTP codes to the browser or network payload.
+- **💬 Real-Time Group Chat & File Sharing:**
+  - WhatsApp-style chat bubbles with message timestamps, emoji reactions, and delivery checkmarks.
+  - Attachment staging drawer allowing senders to preview and **rename files (✏️)** before sending.
+  - Dedicated **Files Tab** in groups with individual file deletion (🗑️), file rename, and batch ZIP archive download.
+  - Active group **QR Code Modal** with live invite code display and 1-click WhatsApp / Copy Link sharing.
+- **📱 Installable Progressive Web App (PWA):**
+  - Includes Web App Manifest (`manifest.json`) and vector app icons for installing QuickShare as a native app on Android, iOS Safari, and desktop browsers.
+- **🎨 Modern Tactile Micro-Interactions:**
+  - Zero-layout-shift floating toasts, smooth button click feedback (`active:scale-[0.98]`), and card hover lifts.
+- **📡 Offline / Online Detection:**
+  - Detects network disconnects and gracefully queues transfers until reconnected.
+- **🔑 Real-World Multi-Option Authentication:**
+  - **Official Google OAuth 2.0 (Google Identity Services):** Real Google Sign-In popup with cryptographic JWT token verification.
+  - **Real Email OTP (100% Free):** 6-digit one-time codes dispatched directly via SMTP / Nodemailer.
+  - **Cellular SMS OTP:** Supports real SMS delivery to mobile phones via Fast2SMS (free signup credits in India) and Twilio.
   - **Standard Email & Password:** Bcrypt hashed credentials with salted rounds.
-- **💬 1-Click WhatsApp & Social Sharing:**
-  - Instantly share files to **WhatsApp**, **Telegram**, **Email**, or via the mobile **Native Share Sheet** (`navigator.share`) with pre-composed transfer messages.
-- **👁️ In-Browser Media Lightbox Preview:**
-  - View images, listen to audio files with an interactive HTML5 player, play video streams, preview PDFs, and read code/text files directly in the browser before downloading.
-- **🖼️ High-Res QR Code Export:**
-  - One-click SVG-to-PNG generator allowing users to save transfer QR codes directly to their mobile photo gallery or desktop.
-- **🛡️ Danger Zone & Account Deletion:**
-  - Complete user self-service account deletion requiring explicit `"DELETE"` confirmation. Automatically cascades and permanently wipes physical files from disk, clears sessions, removes group memberships, and anonymizes audit logs.
-- **👥 Group Lifecycle Management:**
-  - Group creators can safely delete collaboration groups; members can self-serve leave groups at any time.
-- **📜 Guest Recent Transfers:**
-  - Automatic `localStorage` session tracker allowing guest users to view, re-copy, or monitor their active transfers across browser restarts.
-- **Live Upload Progress:** Visual progress bar reporting actual byte transfer speed and percentage.
-- **SHA-256 Checksums:** Cryptographic file hashes computed and validated on upload to guarantee data integrity.
-- **Owner Revocation:** Uploaders receive an exclusive 192-bit secret revocation key (`revokeToken`). Calling revoke immediately invalidates the database session and purges physical files from storage.
-- **Zip-on-the-Fly Archiving:** Multi-file shares can be downloaded individually or streamed as a single dynamically compressed `.zip` archive.
+- **🛡️ Admin Control Center (`/control-center`):**
+  - Multi-Factor Authentication (MFA PIN) protected.
+  - Real-time user management (suspend, session revoke, password reset).
+  - Group and chat moderation (view all messages, delete inappropriate content).
+  - Tamper-resistant security logs parsing client IPs, devices (Android, iOS, Windows, Mac), and browsers.
+  - One-click CSV export of all database tables.
 
 ---
 
 ## 🏗️ Technology Architecture
 
 ```
-[ Client Browsers (Desktop & Mobile) ]
+[ Client Browsers & Mobile PWA ]
        │                    ▲
        │ HTTPS / REST       │ WebRTC DataChannels (P2P Files)
        ▼                    ▼
-[ Node.js + Express Server & WebSocket Hub (Render / Local) ]
+[ Node.js + Express Server & WebSocket Hub (Unified or Split) ]
        │                    │
        ├── WebRTC Signaling (/ws)
+       ├── Static SPA Hosting (Serves frontend/dist in Unified mode)
        ├── Rate Limiter & Security Headers (Helmet, CORS)
        ├── Storage Driver Adapter (Local Disk / S3 Object Storage)
        └── Dual-Engine Database Adapter
-             ├── Local Self-Hosted: Node.js 24 Native SQLite (`node:sqlite`)
-             └── Production Cloud: MySQL 8.0 / TiDB Serverless (Cloud MySQL)
+             ├── Built-in Local & Cloud: Node.js Native SQLite (`node:sqlite`)
+             └── Production Cloud MySQL: TiDB Serverless / Aiven / Supabase
 ```
 
 | Layer | Local Development | ₹0 Production Cloud Deployment |
 | :--- | :--- | :--- |
-| **Frontend** | React 18, Vite, Tailwind CSS, Lucide Icons | Vercel (Edge CDN, free `*.vercel.app`) |
-| **Backend** | Node.js 24 (ESM), Express, `ws` (WebSockets) | Render Free Tier (`*.onrender.com`) |
-| **Database** | Node.js 24 Native SQLite (`node:sqlite`) | TiDB Serverless (5 GB free MySQL compatible) |
+| **Frontend** | React 18, Vite, Tailwind CSS, Lucide Icons | Vercel or Unified on Render / Railway |
+| **Backend** | Node.js 22+ (ESM), Express, `ws` (WebSockets) | Render Free Tier (`*.onrender.com`) |
+| **Database** | Node.js Native SQLite (`node:sqlite`) | Built-in SQLite with `DB_PATH` or TiDB Serverless |
 | **Storage** | Local Filesystem (`backend/uploads`) | Supabase Object Storage / Cloudflare R2 (S3) |
 | **Signaling** | Native WebSocket Server (`/ws`) | Render WebSocket Tunneling |
 
 ---
 
-## 💰 ₹0 Zero-Cost Cloud Stack & Provider Quotas
-
-All cloud services utilized have been verified from official provider documentation to operate **100% free with no mandatory credit card or surprise charges**:
-
-| Provider & Service | Free Tier Allocation | Behavioral Notes & Constraints |
-| :--- | :--- | :--- |
-| **TiDB Serverless** (Database) | 5 GB storage + 50 million Request Units/month free forever | 100% MySQL wire-compatible. Zero cold-start latency. |
-| **Render** (Backend API + WS) | 512 MB RAM, 750 instance hours/month | Free instances spin down after 15 min of inactivity; automatic cold-start wake-up takes ~30 seconds. |
-| **Vercel** (Frontend Hosting) | 100 GB global edge bandwidth/month | Instant deployments with SSL on `*.vercel.app`. |
-| **Supabase / Cloudflare R2** (S3) | 1 GB to 10 GB persistent object storage | Standard S3-compatible protocol. Cloudflare R2 provides $0 egress fees. |
-
----
-
 ## 💻 Zero-Config Local Development
 
-QuickShare includes a zero-config native SQLite database engine built right into Node.js 24. **You do not need to install XAMPP or configure MySQL to run the project locally.**
+QuickShare includes a zero-config native SQLite database engine built right into Node.js. **You do not need to install XAMPP or configure MySQL to run the project locally.**
 
 ### Prerequisites
-- **Node.js:** v20+ (v24 recommended for native SQLite `node:sqlite`)
+- **Node.js:** v20+ (v22+ recommended for native SQLite `node:sqlite`)
 - **Git**
 
 ### 1. Clone the Repository
 ```bash
-git clone https://github.com/sathidevivaraprasadreddy/quickshare.git
-cd quickshare
+git clone https://github.com/sathidevivaraprasadreddy/share.git
+cd share
 ```
 
-### 2. Configure Backend
-Copy the template `.env.example` to `.env`:
-```bash
-cd backend
-cp .env.example .env
-```
-*(By default, leaving `DATABASE_URL` empty automatically activates zero-config SQLite stored in `database/quickshare.sqlite`).*
-
-Install dependencies:
+### 2. Install Dependencies
 ```bash
 npm install
+npm --prefix backend install
+npm --prefix frontend install
 ```
 
-### 3. Configure Frontend
+### 3. Start Both Servers Concurrently
 ```bash
-cd ../frontend
-npm install
+# Terminal 1: Backend
+npm --prefix backend run dev
+
+# Terminal 2: Frontend
+npm --prefix frontend run dev
 ```
+
+Open your browser at: **`http://localhost:5180`**
+
+---
+
+## 🚀 Production Deployment Guide
+
+### Option A: Unified 1-Click Deploy on Render (Recommended)
+1. Push your repository to GitHub.
+2. Sign in to [Render](https://render.com/) and click **New +** -> **Web Service**.
+3. Connect your GitHub repository. Render reads [render.yaml](render.yaml) automatically:
+   - **Build Command:** `npm run build`
+   - **Start Command:** `npm start`
+   - **Plan:** Free
+4. Click **Create Web Service**. Render compiles the frontend, boots the backend, and serves the entire fullstack app on a free `*.onrender.com` URL!
+
+### Option B: Split Deploy (Frontend on Vercel + Backend on Render)
+- **Backend on Render:**
+  - Build Command: `npm --prefix backend install`
+  - Start Command: `node backend/src/server.js`
+- **Frontend on Vercel:**
+  - Root Directory: `frontend`
+  - Environment Variable: `VITE_API_URL=https://your-backend.onrender.com/api`
+
+---
+
+## 🧪 Automated Testing Suite
+
+QuickShare includes a rigorous automated test suite powered by Jest and Supertest verifying critical security and user flows:
+
+```bash
+npm --prefix backend test
+```
+
+### Verified Test Coverage (56/56 Passing - 100%):
+- **User Authentication:** Registration, duplicate checks, bcrypt verification, JWT signing, profile updates, and password changes.
+- **Share Sessions & Uploads:** Single/multi-file uploads, mime-type sanitization, SHA-256 hash calculation, quota verification.
+- **6-Digit Codes & Direct Transfer:** Code lookup, rate-limiting lockout verification, direct delivery into recipient inboxes.
+- **Inbox Operations:** Read/pinned/archived state updates, delivery checkmarks, and non-destructive removal verification.
+- **File Management:** Category filtering (`images`, `documents`, `archives`, `trash`), inline rename, soft-delete to trash, restore, and permanent purge.
+- **Collaboration Groups:** Group creation, member additions, role checks, group share linking, individual file deletion, and batch revocation.
+- **Owner Revocation:** Rejection of unauthorized revokes and verified physical file destruction on valid revocation.
+
+---
+
+## 🔒 Security, Privacy & Data Lifecycle
+
+- **High-Entropy Tokens:** Share tokens are generated with 16 cryptographically random bytes ($2^{128}$ combinations). Revocation tokens utilize 24 bytes ($2^{192}$ combinations), preventing brute-force enumeration.
+- **Path Traversal Guards:** File paths are strictly sanitized with `path.basename()` and verified against upload directory boundaries with `resolveSafePath()`.
+- **Remote Execution Prevention:** Uploads are stored outside public web roots and served with `Content-Disposition: attachment` and `X-Content-Type-Options: nosniff`.
+- **Prepared Parameterized Queries:** 100% of database queries use parameterized placeholders (`?`) preventing SQL injection across both SQLite and MySQL engines.
+- **Non-Destructive Inbox Deletion:** Removing an item from an inbox deletes only the recipient's view entry; the underlying file remains intact for the owner.
+- **Immediate Physical Purge:** Revocation or expiration immediately deletes the file from disk or cloud S3 storage.
+
+---
+
+## 📜 License
+This project is open-source and released under the [MIT License](LICENSE).
 
 ### 4. Run Both Servers Concurrently
 From the root project directory:
@@ -249,14 +296,14 @@ QuickShare includes a rigorous automated test suite powered by Jest and Supertes
 npm --prefix backend test
 ```
 
-### Verified Test Coverage (48/48 Passing):
+### Verified Test Coverage (56/56 Passing - 100%):
 - **User Authentication:** Registration, duplicate checks, bcrypt verification, JWT signing, profile updates, and password changes.
 - **Share Sessions & Uploads:** Single/multi-file uploads, mime-type sanitization, SHA-256 hash calculation, quota verification.
 - **6-Digit Codes & Direct Transfer:** Code lookup, rate-limiting lockout verification, direct delivery into recipient inboxes.
-- **Inbox Operations:** Read/pinned/archived state updates and non-destructive removal verification.
+- **Inbox Operations:** Read/pinned/archived state updates, delivery checkmarks, and non-destructive removal verification.
 - **File Management:** Category filtering (`images`, `documents`, `archives`, `trash`), inline rename, soft-delete to trash, restore, and permanent purge.
-- **Collaboration Groups:** Group creation, member additions, role checks, group share linking.
-- **Owner Revocation:** Rejection of unauthorized revokes and verified physical file destruction on valid revocation.
+- **Collaboration Groups:** Group creation, member additions, role checks, group share linking, individual file deletion, batch revocation, and real-time chat messages.
+- **Owner Revocation & IDOR Security:** Rejection of unauthorized revokes, 404 security checks on file access, and verified physical file destruction on valid revocation.
 
 ---
 
