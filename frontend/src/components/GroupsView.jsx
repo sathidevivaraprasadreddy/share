@@ -6,6 +6,7 @@ import {
   addGroupMember,
   removeGroupMember,
   getZipDownloadUrl,
+  getSingleFileDownloadUrl,
   deleteGroup,
   getGroupByInvite,
   joinGroupByInvite,
@@ -13,7 +14,8 @@ import {
   sendGroupMessage,
   deleteGroupMessage,
   uploadFiles,
-  shareWithGroup
+  shareWithGroup,
+  renameFile
 } from '../services/api';
 import {
   Users,
@@ -39,10 +41,37 @@ import {
   Smile,
   CheckCheck,
   Paperclip,
-  Loader2
+  Loader2,
+  Pencil,
+  FileText,
+  Image,
+  Film,
+  Music,
+  Archive,
+  File
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { formatBytes } from '../utils/format';
+
+function getFileIcon(filename) {
+  const ext = filename?.split('.').pop()?.toLowerCase();
+  if (['png', 'jpg', 'jpeg', 'gif', 'svg', 'webp'].includes(ext)) {
+    return <Image className="w-4 h-4 text-purple-500" />;
+  }
+  if (['mp4', 'mov', 'avi', 'mkv', 'webm'].includes(ext)) {
+    return <Film className="w-4 h-4 text-blue-500" />;
+  }
+  if (['mp3', 'wav', 'ogg', 'm4a', 'flac'].includes(ext)) {
+    return <Music className="w-4 h-4 text-amber-500" />;
+  }
+  if (['zip', 'rar', '7z', 'tar', 'gz'].includes(ext)) {
+    return <Archive className="w-4 h-4 text-yellow-600" />;
+  }
+  if (['pdf', 'doc', 'docx', 'txt', 'md', 'csv', 'xlsx'].includes(ext)) {
+    return <FileText className="w-4 h-4 text-rose-500" />;
+  }
+  return <File className="w-4 h-4 text-slate-400" />;
+}
 
 export default function GroupsView({
   user,
@@ -77,6 +106,16 @@ export default function GroupsView({
   const [groupUploading, setGroupUploading] = useState(false);
   const [groupUploadProgress, setGroupUploadProgress] = useState(0);
 
+  // WhatsApp-style staged files attachment with rename
+  const [stagedChatFiles, setStagedChatFiles] = useState([]);
+  const [editingStagedIndex, setEditingStagedIndex] = useState(null);
+  const [stagedRenameInput, setStagedRenameInput] = useState('');
+
+  // Files tab rename state
+  const [editingSharedFileId, setEditingSharedFileId] = useState(null);
+  const [sharedFileRenameInput, setSharedFileRenameInput] = useState('');
+  const [renamingSharedFile, setRenamingSharedFile] = useState(false);
+
   const EMOJIS = [
     '😀', '😂', '🤣', '😍', '🥰', '😎', '👍', '🔥', '❤️', '🎉', 
     '🚀', '📁', '📄', '📎', '🙏', '👏', '💯', '🤝', '🎂', '🎓', 
@@ -87,17 +126,64 @@ export default function GroupsView({
     setChatInput((prev) => prev + emoji);
   };
 
-  const handleGroupFilesSelected = async (e) => {
+  const handleGroupFilesSelected = (e) => {
     const selectedFiles = Array.from(e.target.files || []);
     if (selectedFiles.length === 0 || !selectedGroup) return;
+    setStagedChatFiles((prev) => [...prev, ...selectedFiles]);
+    if (groupFileInputRef.current) groupFileInputRef.current.value = '';
+  };
+
+  const handleStartStagedRename = (idx, currentName) => {
+    setEditingStagedIndex(idx);
+    setStagedRenameInput(currentName);
+  };
+
+  const handleSaveStagedRename = (idx) => {
+    const trimmed = stagedRenameInput.trim();
+    if (!trimmed) {
+      setEditingStagedIndex(null);
+      return;
+    }
+
+    setStagedChatFiles((prev) => {
+      const updated = [...prev];
+      const orig = updated[idx];
+      if (orig) {
+        const renamed = new File([orig], trimmed, {
+          type: orig.type,
+          lastModified: orig.lastModified
+        });
+        updated[idx] = renamed;
+      }
+      return updated;
+    });
+
+    setEditingStagedIndex(null);
+    setStagedRenameInput('');
+  };
+
+  const handleRemoveStagedFile = (idx) => {
+    setStagedChatFiles((prev) => prev.filter((_, i) => i !== idx));
+    if (editingStagedIndex === idx) setEditingStagedIndex(null);
+  };
+
+  const handleSendStagedFiles = async () => {
+    if (stagedChatFiles.length === 0 || !selectedGroup) return;
 
     setGroupUploading(true);
     setGroupUploadProgress(0);
     setError(null);
 
+    const filesToSend = [...stagedChatFiles];
+    const optionalCaption = chatInput.trim();
+    const fileNames = filesToSend.map((f) => f.name).join(', ');
+    const messageText = optionalCaption
+      ? `📁 Shared ${filesToSend.length} file(s): ${fileNames}\n💬 "${optionalCaption}"`
+      : `📁 Shared ${filesToSend.length} file(s): ${fileNames}`;
+
     try {
-      // 1. Upload files
-      const result = await uploadFiles(selectedFiles, { expiryHours: 72 }, (progress) => {
+      // 1. Upload files with their renamed names
+      const result = await uploadFiles(filesToSend, { expiryHours: 72 }, (progress) => {
         setGroupUploadProgress(progress);
       });
 
@@ -109,26 +195,60 @@ export default function GroupsView({
       await shareWithGroup(selectedGroup.id, result.shareToken);
 
       // 3. Post a message to group chat letting members know
-      const fileNames = selectedFiles.map((f) => f.name).join(', ');
-      await sendGroupMessage(
-        selectedGroup.id,
-        `📁 Shared ${selectedFiles.length} file(s): ${fileNames}`
-      );
+      await sendGroupMessage(selectedGroup.id, messageText);
 
-      // 4. Refresh messages and group details
+      // 4. Reset staged files & chat input
+      setStagedChatFiles([]);
+      setChatInput('');
+      setEditingStagedIndex(null);
+      setStagedRenameInput('');
+
+      // 5. Refresh messages and group details
       await loadGroupMessages(selectedGroup.id, true);
       const res = await getGroupDetails(selectedGroup.id);
       if (res.success) {
         setGroupDetails(res.group);
       }
 
-      setSuccess(`Successfully shared ${selectedFiles.length} file(s) with "${selectedGroup.name}"!`);
+      setSuccess(`Successfully shared ${filesToSend.length} file(s) with "${selectedGroup.name}"!`);
       setTimeout(() => setSuccess(null), 3000);
     } catch (err) {
       setError(err.response?.data?.error || err.message || 'Failed to share files to group.');
     } finally {
       setGroupUploading(false);
       if (groupFileInputRef.current) groupFileInputRef.current.value = '';
+    }
+  };
+
+  const handleRenameSharedFile = async (fileId) => {
+    const trimmed = sharedFileRenameInput.trim();
+    if (!trimmed || !fileId) {
+      setEditingSharedFileId(null);
+      return;
+    }
+
+    setRenamingSharedFile(true);
+    try {
+      const res = await renameFile(fileId, trimmed);
+      if (res.success) {
+        // Update local group details state
+        setGroupDetails((prev) => {
+          if (!prev || !prev.shares) return prev;
+          const updatedShares = prev.shares.map((share) => ({
+            ...share,
+            files: (share.files || []).map((f) => (f.id === fileId ? { ...f, name: res.newName || trimmed } : f))
+          }));
+          return { ...prev, shares: updatedShares };
+        });
+        setSuccess(`File renamed to "${res.newName || trimmed}" successfully.`);
+        setTimeout(() => setSuccess(null), 3000);
+      }
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to rename file.');
+    } finally {
+      setRenamingSharedFile(false);
+      setEditingSharedFileId(null);
+      setSharedFileRenameInput('');
     }
   };
 
@@ -163,6 +283,13 @@ export default function GroupsView({
 
   const handleSendMessage = async (e) => {
     if (e) e.preventDefault();
+
+    // If files are attached in chat, send staged files (with any caption in chatInput)
+    if (stagedChatFiles.length > 0) {
+      await handleSendStagedFiles();
+      return;
+    }
+
     if (!chatInput.trim() || !selectedGroup) return;
     const msgText = chatInput.trim();
     setChatInput('');
@@ -801,6 +928,112 @@ export default function GroupsView({
                 </div>
               )}
 
+              {/* WhatsApp-Style Attached Files Drawer with Rename */}
+              {stagedChatFiles.length > 0 && (
+                <div className="p-3 bg-[#e9edef] dark:bg-[#1f2c34] border-t border-slate-200/90 dark:border-slate-800 animate-fade-in space-y-2 shrink-0">
+                  <div className="flex items-center justify-between text-xs px-1">
+                    <span className="font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                      <Paperclip className="w-3.5 h-3.5 text-[#00a884]" />
+                      <span>Attached Files ({stagedChatFiles.length}) — Click pencil to rename</span>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setStagedChatFiles([]);
+                        setEditingStagedIndex(null);
+                        setStagedRenameInput('');
+                      }}
+                      className="text-[11px] text-slate-400 hover:text-rose-500 transition-colors font-semibold"
+                    >
+                      Clear All
+                    </button>
+                  </div>
+
+                  <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
+                    {stagedChatFiles.map((file, idx) => {
+                      const isEditing = editingStagedIndex === idx;
+                      return (
+                        <div
+                          key={`${file.name}-${idx}`}
+                          className="p-2 sm:p-2.5 rounded-xl bg-white dark:bg-[#2a3942] border border-slate-200/80 dark:border-slate-700/80 flex items-center justify-between gap-2 shadow-2xs group"
+                        >
+                          <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                            <div className="w-7 h-7 rounded-lg bg-slate-100 dark:bg-slate-700/70 flex items-center justify-center shrink-0">
+                              {getFileIcon(file.name)}
+                            </div>
+
+                            {isEditing ? (
+                              <div className="flex items-center gap-1.5 flex-1">
+                                <input
+                                  type="text"
+                                  value={stagedRenameInput}
+                                  onChange={(e) => setStagedRenameInput(e.target.value)}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter') {
+                                      e.preventDefault();
+                                      handleSaveStagedRename(idx);
+                                    }
+                                    if (e.key === 'Escape') setEditingStagedIndex(null);
+                                  }}
+                                  autoFocus
+                                  className="px-2.5 py-1 rounded-lg border border-[#00a884] bg-white dark:bg-slate-800 text-xs text-slate-900 dark:text-white font-medium focus:outline-none flex-1 font-mono"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => handleSaveStagedRename(idx)}
+                                  className="p-1 rounded-lg bg-[#00a884] hover:bg-[#008f6f] text-white"
+                                  title="Save name"
+                                >
+                                  <Check className="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setEditingStagedIndex(null)}
+                                  className="p-1 rounded-lg bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300"
+                                  title="Cancel"
+                                >
+                                  <X className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            ) : (
+                              <div className="min-w-0 flex-1 flex items-center gap-2">
+                                <span className="text-xs font-semibold text-slate-800 dark:text-slate-100 truncate" title={file.name}>
+                                  {file.name}
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => handleStartStagedRename(idx, file.name)}
+                                  className="p-1 text-slate-400 hover:text-[#00a884] dark:hover:text-[#00a884] rounded transition-colors"
+                                  title="Rename this file before sending in chat"
+                                >
+                                  <Pencil className="w-3 h-3" />
+                                </button>
+                              </div>
+                            )}
+                          </div>
+
+                          {!isEditing && (
+                            <div className="flex items-center gap-2 shrink-0">
+                              <span className="text-[11px] text-slate-400 font-mono">
+                                {formatBytes(file.size)}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveStagedFile(idx)}
+                                className="p-1 text-slate-400 hover:text-rose-500 rounded transition-colors"
+                                title="Remove file"
+                              >
+                                <X className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
               {/* Input Bar (WhatsApp-Style) */}
               {groupUploading && (
                 <div className="px-4 py-2 bg-emerald-50 dark:bg-emerald-950/80 border-t border-emerald-200 dark:border-emerald-800 text-xs text-emerald-800 dark:text-emerald-200 flex items-center justify-between animate-fade-in shrink-0">
@@ -828,10 +1061,15 @@ export default function GroupsView({
                 <button
                   type="button"
                   onClick={() => groupFileInputRef.current?.click()}
-                  className="p-2 text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-200/70 dark:hover:bg-slate-700 rounded-full transition-colors"
+                  className="relative p-2 text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-200/70 dark:hover:bg-slate-700 rounded-full transition-colors"
                   title="Attach & share files to group"
                 >
                   <Paperclip className="w-5 h-5" />
+                  {stagedChatFiles.length > 0 && (
+                    <span className="absolute -top-1 -right-1 w-4 h-4 bg-[#00a884] text-white text-[10px] font-bold rounded-full flex items-center justify-center animate-scale-in">
+                      {stagedChatFiles.length}
+                    </span>
+                  )}
                 </button>
 
                 <input
@@ -844,17 +1082,25 @@ export default function GroupsView({
                       handleSendMessage();
                     }
                   }}
-                  placeholder="Type a message..."
+                  placeholder={
+                    stagedChatFiles.length > 0
+                      ? `Add a caption with ${stagedChatFiles.length} file(s) or press Enter to send...`
+                      : 'Type a message...'
+                  }
                   className="flex-1 bg-white dark:bg-[#2a3942] text-slate-800 dark:text-slate-100 placeholder-slate-400 text-xs sm:text-sm px-4 py-2.5 rounded-full border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-[#00a884]/30"
                 />
 
                 <button
                   type="submit"
-                  disabled={!chatInput.trim()}
+                  disabled={groupUploading || (!chatInput.trim() && stagedChatFiles.length === 0)}
                   className="w-10 h-10 rounded-full bg-[#00a884] hover:bg-[#008f6f] disabled:opacity-40 text-white flex items-center justify-center shadow-md active:scale-95 transition-all shrink-0"
-                  title="Send message"
+                  title={stagedChatFiles.length > 0 ? "Send renamed file(s) to group" : "Send message"}
                 >
-                  <Send className="w-4 h-4 ml-0.5" />
+                  {groupUploading ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Send className="w-4 h-4 ml-0.5" />
+                  )}
                 </button>
               </form>
             </div>
@@ -867,6 +1113,17 @@ export default function GroupsView({
                 <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">
                   Files Shared with Group ({groupDetails?.shares?.length || 0})
                 </h3>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setGroupTab('chat');
+                    setTimeout(() => groupFileInputRef.current?.click(), 100);
+                  }}
+                  className="px-3 py-1.5 rounded-xl bg-[#00a884] hover:bg-[#008f6f] text-white text-xs font-semibold flex items-center gap-1.5 shadow-xs transition-all"
+                >
+                  <Paperclip className="w-3.5 h-3.5" />
+                  <span>Attach & Share Files</span>
+                </button>
               </div>
 
               {groupUploading && (
@@ -884,31 +1141,120 @@ export default function GroupsView({
                   No files have been shared with this group yet. Use the paperclip (📎) icon in the Group Chat to share files with everyone.
                 </div>
               ) : (
-                <div className="space-y-2">
+                <div className="space-y-3">
                   {groupDetails?.shares?.map((share) => (
                     <div
                       key={share.id}
-                      className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 flex items-center justify-between gap-3"
+                      className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 space-y-2.5"
                     >
-                      <div className="flex items-center gap-3 min-w-0">
-                        <Folder className="w-5 h-5 text-rose-600 shrink-0" />
-                        <div className="min-w-0">
-                          <div className="text-xs font-bold text-slate-800 dark:text-slate-100">
-                            {share.fileCount} file(s) ({formatBytes(share.totalSizeBytes)})
-                          </div>
-                          <div className="text-[11px] text-slate-400">
-                            Shared by {share.sharedBy} • Expires {new Date(share.expiresAt).toLocaleDateString()}
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <Folder className="w-5 h-5 text-rose-600 shrink-0" />
+                          <div className="min-w-0">
+                            <div className="text-xs font-bold text-slate-800 dark:text-slate-100">
+                              {share.fileCount} file(s) ({formatBytes(share.totalSizeBytes)})
+                            </div>
+                            <div className="text-[11px] text-slate-400">
+                              Shared by {share.sharedBy} • Expires {new Date(share.expiresAt).toLocaleDateString()}
+                            </div>
                           </div>
                         </div>
+
+                        <a
+                          href={getZipDownloadUrl(share.shareToken)}
+                          download
+                          className="py-1.5 px-3 bg-white dark:bg-slate-700 hover:bg-slate-100 dark:hover:bg-slate-600 border border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-200 text-xs font-semibold rounded-xl flex items-center gap-1 shadow-xs shrink-0"
+                        >
+                          <Download className="w-3.5 h-3.5" />
+                          Download ZIP
+                        </a>
                       </div>
 
-                      <a
-                        href={getZipDownloadUrl(share.shareToken)}
-                        className="py-1.5 px-3 bg-white dark:bg-slate-700 hover:bg-slate-100 dark:hover:bg-slate-600 border border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-200 text-xs font-semibold rounded-xl flex items-center gap-1 shadow-xs shrink-0"
-                      >
-                        <Download className="w-3.5 h-3.5" />
-                        Download ZIP
-                      </a>
+                      {/* Individual Files with Rename capability */}
+                      {share.files && share.files.length > 0 && (
+                        <div className="pt-2 border-t border-slate-200/60 dark:border-slate-700/60 space-y-1.5">
+                          {share.files.map((file) => {
+                            const isEditingThisFile = editingSharedFileId === file.id;
+                            const canRename = file.isOwner || groupDetails?.isOwner;
+                            return (
+                              <div
+                                key={file.id}
+                                className="flex items-center justify-between gap-2 p-2 rounded-xl bg-white/80 dark:bg-slate-900/60 border border-slate-200/50 dark:border-slate-800 text-xs"
+                              >
+                                <div className="flex items-center gap-2 min-w-0 flex-1">
+                                  {getFileIcon(file.name)}
+
+                                  {isEditingThisFile ? (
+                                    <div className="flex items-center gap-1.5 flex-1">
+                                      <input
+                                        type="text"
+                                        value={sharedFileRenameInput}
+                                        onChange={(e) => setSharedFileRenameInput(e.target.value)}
+                                        onKeyDown={(e) => {
+                                          if (e.key === 'Enter') handleRenameSharedFile(file.id);
+                                          if (e.key === 'Escape') setEditingSharedFileId(null);
+                                        }}
+                                        autoFocus
+                                        className="px-2 py-0.5 rounded-lg border border-[#00a884] bg-white dark:bg-slate-800 text-xs text-slate-900 dark:text-white font-medium focus:outline-none flex-1 font-mono"
+                                      />
+                                      <button
+                                        type="button"
+                                        onClick={() => handleRenameSharedFile(file.id)}
+                                        disabled={renamingSharedFile}
+                                        className="p-1 rounded-md bg-[#00a884] text-white hover:bg-[#008f6f]"
+                                        title="Save name"
+                                      >
+                                        <Check className="w-3 h-3" />
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => setEditingSharedFileId(null)}
+                                        className="p-1 rounded-md bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300"
+                                        title="Cancel"
+                                      >
+                                        <X className="w-3 h-3" />
+                                      </button>
+                                    </div>
+                                  ) : (
+                                    <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                                      <span className="font-semibold text-slate-800 dark:text-slate-200 truncate" title={file.name}>
+                                        {file.name}
+                                      </span>
+                                      {canRename && (
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            setEditingSharedFileId(file.id);
+                                            setSharedFileRenameInput(file.name);
+                                          }}
+                                          className="p-1 text-slate-400 hover:text-[#00a884] rounded transition-colors"
+                                          title="Rename this file"
+                                        >
+                                          <Pencil className="w-3 h-3" />
+                                        </button>
+                                      )}
+                                    </div>
+                                  )}
+                                </div>
+
+                                <div className="flex items-center gap-2 shrink-0">
+                                  <span className="text-[11px] text-slate-400 font-mono">
+                                    {formatBytes(file.size)}
+                                  </span>
+                                  <a
+                                    href={getSingleFileDownloadUrl(share.shareToken, file.id)}
+                                    download={file.name}
+                                    className="p-1 text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 transition-colors"
+                                    title="Download this file"
+                                  >
+                                    <Download className="w-3.5 h-3.5" />
+                                  </a>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>

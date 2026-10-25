@@ -139,7 +139,7 @@ export async function getGroupDetails(req, res, next) {
 
     // Get group shares
     const [shares] = await db.query(
-      `SELECT gs.id AS share_id, gs.is_revoked, gs.created_at AS shared_at,
+      `SELECT gs.id AS share_id, gs.session_id, gs.is_revoked, gs.created_at AS shared_at, gs.shared_by_user_id,
               s.share_token, s.total_size_bytes, s.file_count, s.expires_at, s.is_revoked AS session_revoked,
               u.username AS shared_by_username, u.display_name AS shared_by_name
        FROM group_shares gs
@@ -149,6 +149,34 @@ export async function getGroupDetails(req, res, next) {
        ORDER BY gs.created_at DESC`,
       [id]
     );
+
+    // Fetch individual files for each share
+    const populatedShares = [];
+    for (const s of shares) {
+      const [shareFiles] = await db.query(
+        `SELECT id, original_name, file_size, mime_type, user_id FROM share_files WHERE session_id = ? AND is_deleted = 0`,
+        [s.session_id]
+      );
+      populatedShares.push({
+        id: s.share_id,
+        shareToken: s.share_token,
+        totalSizeBytes: s.total_size_bytes,
+        fileCount: s.file_count,
+        expiresAt: s.expires_at,
+        isExpired: new Date(s.expires_at) < new Date(),
+        isRevoked: Boolean(s.is_revoked || s.session_revoked),
+        sharedBy: s.shared_by_name || s.shared_by_username,
+        sharedByUserId: s.shared_by_user_id,
+        sharedAt: s.shared_at,
+        files: (shareFiles || []).map((f) => ({
+          id: f.id,
+          name: f.original_name,
+          size: f.file_size,
+          mimeType: f.mime_type,
+          isOwner: f.user_id === userId
+        }))
+      });
+    }
 
     return res.json({
       success: true,
@@ -165,17 +193,7 @@ export async function getGroupDetails(req, res, next) {
           role: m.role,
           joinedAt: m.joined_at
         })),
-        shares: shares.map((s) => ({
-          id: s.share_id,
-          shareToken: s.share_token,
-          totalSizeBytes: s.total_size_bytes,
-          fileCount: s.file_count,
-          expiresAt: s.expires_at,
-          isExpired: new Date(s.expires_at) < new Date(),
-          isRevoked: Boolean(s.is_revoked || s.session_revoked),
-          sharedBy: s.shared_by_name || s.shared_by_username,
-          sharedAt: s.shared_at
-        }))
+        shares: populatedShares
       }
     });
   } catch (err) {
