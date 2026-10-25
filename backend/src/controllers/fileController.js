@@ -99,14 +99,42 @@ export async function renameFile(req, res, next) {
     const cleanName = sanitizeFilename(newName.trim());
     const db = getDbPool();
 
-    const [result] = await db.query(
-      `UPDATE share_files SET original_name = ? WHERE id = ? AND user_id = ?`,
-      [cleanName, id, req.user.id]
+    // Check file and permission (owner of file, admin, or owner of group where session is shared)
+    const [fileRows] = await db.query(
+      `SELECT sf.id, sf.user_id, sf.session_id, gs.group_id, g.owner_user_id AS group_owner_id
+       FROM share_files sf
+       LEFT JOIN group_shares gs ON sf.session_id = gs.session_id
+       LEFT JOIN groups g ON gs.group_id = g.id
+       WHERE sf.id = ? AND sf.is_deleted = 0`,
+      [id]
     );
 
-    if (result.affectedRows === 0) {
-      return res.status(404).json({ success: false, error: 'File not found or unauthorized.' });
+    if (fileRows.length === 0) {
+      return res.status(404).json({ success: false, error: 'File not found.' });
     }
+
+    const fileRec = fileRows[0];
+    const isOwner = fileRec.user_id && req.user && fileRec.user_id === req.user.id;
+    const isAdmin = Boolean(req.user && req.user.is_admin);
+    const isGroupOwner = fileRec.group_owner_id && req.user && fileRec.group_owner_id === req.user.id;
+
+    let isGroupMember = false;
+    if (fileRec.group_id && req.user) {
+      const [members] = await db.query(
+        `SELECT role FROM group_members WHERE group_id = ? AND user_id = ?`,
+        [fileRec.group_id, req.user.id]
+      );
+      isGroupMember = members.length > 0;
+    }
+
+    if (!isOwner && !isAdmin && !isGroupOwner && !isGroupMember && fileRec.user_id !== null) {
+      return res.status(404).json({ success: false, error: 'File not found or permission denied.' });
+    }
+
+    await db.query(
+      `UPDATE share_files SET original_name = ? WHERE id = ?`,
+      [cleanName, id]
+    );
 
     return res.json({
       success: true,

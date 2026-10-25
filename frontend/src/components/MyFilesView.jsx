@@ -617,7 +617,7 @@ export default function MyFilesView({
                       ) : (
                         <div className="flex items-center gap-2">
                           <span className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white truncate">
-                            {file.name}
+                            {file.name || 'File'}
                           </span>
                           {category !== 'trash' && (
                             <button

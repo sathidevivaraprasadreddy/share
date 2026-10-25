@@ -73,15 +73,19 @@ export default function FileList({
 
   const handleStartRename = (index, currentName) => {
     setEditingIndex(index);
-    setRenameInput(currentName);
+    const existing = currentName || files[index]?.customName || files[index]?.name || '';
+    setRenameInput(existing);
   };
 
   const handleSaveRename = (index) => {
-    const trimmed = renameInput.trim();
-    if (trimmed && onRenameFile) {
-      onRenameFile(index, trimmed);
-    }
+    const trimmed = (renameInput || '').trim();
     setEditingIndex(null);
+    const fallback = files[index]?.customName || files[index]?.name || 'File';
+    const targetName = trimmed || fallback;
+    if (onRenameFile) {
+      onRenameFile(index, targetName);
+    }
+    setRenameInput('');
   };
 
   return (
@@ -112,14 +116,15 @@ export default function FileList({
       <div className="max-h-64 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800 my-1">
         {files.map((file, index) => {
           const isEditing = editingIndex === index;
+          const displayName = file?.customName || file?.name || 'File';
           return (
             <div
-              key={`${file.name}-${index}`}
+              key={`selected-file-${index}`}
               className="py-3 px-2 flex items-center justify-between hover:bg-slate-50/80 dark:hover:bg-slate-800/60 rounded-xl transition-colors group"
             >
               <div className="flex items-center gap-3 min-w-0 pr-3 flex-1">
                 <div className="w-9 h-9 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center shrink-0">
-                  {getFileIcon(file.name)}
+                  {getFileIcon(displayName)}
                 </div>
 
                 {isEditing ? (
@@ -155,13 +160,13 @@ export default function FileList({
                 ) : (
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
-                      <p className="text-sm font-medium text-slate-800 dark:text-white truncate" title={file.name}>
-                        {file.name}
+                      <p className="text-sm font-medium text-slate-800 dark:text-white truncate" title={displayName}>
+                        {displayName}
                       </p>
                       {!uploading && (
                         <button
                           type="button"
-                          onClick={() => handleStartRename(index, file.name)}
+                          onClick={() => handleStartRename(index, displayName)}
                           className="opacity-70 group-hover:opacity-100 p-1 text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 rounded transition-all"
                           title="Rename file before sharing"
                         >

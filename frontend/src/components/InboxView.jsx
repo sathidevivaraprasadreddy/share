@@ -409,7 +409,7 @@ export default function InboxView({ user, onRequireAuth }) {
                 <div className="bg-slate-50 dark:bg-slate-800/50 rounded-2xl p-3 divide-y divide-slate-100 dark:divide-slate-700">
                   {item.files.map((file) => {
                     const isEditing = editingFileId === file.id;
-                    const displayName = renamedFiles[file.id] || file.name;
+                    const displayName = renamedFiles[file.id] || file.name || 'File';
                     return (
                       <div key={file.id} className="py-2.5 px-2 flex items-center justify-between gap-3">
                         <div className="flex items-center gap-2.5 min-w-0 flex-1">
@@ -451,7 +451,7 @@ export default function InboxView({ user, onRequireAuth }) {
                               </span>
                               <button
                                 type="button"
-                                onClick={() => handleStartRename(file.id, file.name)}
+                                onClick={() => handleStartRename(file.id, displayName)}
                                 className="p-1 text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 rounded transition-colors"
                                 title="Rename file in your inbox view"
                               >

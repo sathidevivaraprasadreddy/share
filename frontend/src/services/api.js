@@ -119,7 +119,9 @@ export async function uploadFiles(files, options = {}, onProgress) {
   if (opts.note) formData.append('note', opts.note);
 
   for (let i = 0; i < files.length; i++) {
-    formData.append('files', files[i]);
+    const f = files[i];
+    const filename = f.customName || f.name;
+    formData.append('files', f, filename);
   }
 
   const response = await api.post('/upload', formData, {
@@ -176,7 +178,9 @@ export async function createDirectShare(files, recipients, options = {}, onProgr
   if (options.burnOnDownload) formData.append('burnOnDownload', 'true');
 
   for (let i = 0; i < files.length; i++) {
-    formData.append('files', files[i]);
+    const f = files[i];
+    const filename = f.customName || f.name;
+    formData.append('files', f, filename);
   }
 
   const response = await api.post('/transfer/direct', formData, {

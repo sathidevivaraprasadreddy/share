@@ -135,30 +135,43 @@ export default function GroupsView({
 
   const handleStartStagedRename = (idx, currentName) => {
     setEditingStagedIndex(idx);
-    setStagedRenameInput(currentName);
+    const existing = currentName || stagedChatFiles[idx]?.customName || stagedChatFiles[idx]?.name || '';
+    setStagedRenameInput(existing);
   };
 
   const handleSaveStagedRename = (idx) => {
-    const trimmed = stagedRenameInput.trim();
-    if (!trimmed) {
-      setEditingStagedIndex(null);
-      return;
-    }
+    const trimmed = (stagedRenameInput || '').trim();
+    setEditingStagedIndex(null);
 
     setStagedChatFiles((prev) => {
       const updated = [...prev];
       const orig = updated[idx];
       if (orig) {
-        const renamed = new File([orig], trimmed, {
-          type: orig.type,
-          lastModified: orig.lastModified
-        });
-        updated[idx] = renamed;
+        const fallback = orig.customName || orig.name || 'File';
+        const targetName = trimmed || fallback;
+        try {
+          orig.customName = targetName;
+        } catch (e) {}
+        try {
+          Object.defineProperty(orig, 'name', { value: targetName, writable: true, configurable: true });
+        } catch (e) {}
+        try {
+          const renamed = new File([orig], targetName, {
+            type: orig.type,
+            lastModified: orig.lastModified
+          });
+          renamed.customName = targetName;
+          try {
+            Object.defineProperty(renamed, 'name', { value: targetName, writable: true, configurable: true });
+          } catch (e) {}
+          updated[idx] = renamed;
+        } catch (e) {
+          updated[idx] = orig;
+        }
       }
       return updated;
     });
 
-    setEditingStagedIndex(null);
     setStagedRenameInput('');
   };
 
@@ -176,7 +189,7 @@ export default function GroupsView({
 
     const filesToSend = [...stagedChatFiles];
     const optionalCaption = chatInput.trim();
-    const fileNames = filesToSend.map((f) => f.name).join(', ');
+    const fileNames = filesToSend.map((f) => f.customName || f.name).join(', ');
     const messageText = optionalCaption
       ? `📁 Shared ${filesToSend.length} file(s): ${fileNames}\n💬 "${optionalCaption}"`
       : `📁 Shared ${filesToSend.length} file(s): ${fileNames}`;
@@ -221,8 +234,12 @@ export default function GroupsView({
   };
 
   const handleRenameSharedFile = async (fileId) => {
-    const trimmed = sharedFileRenameInput.trim();
-    if (!trimmed || !fileId) {
+    const trimmed = (sharedFileRenameInput || '').trim();
+    if (!fileId) {
+      setEditingSharedFileId(null);
+      return;
+    }
+    if (!trimmed) {
       setEditingSharedFileId(null);
       return;
     }
@@ -230,17 +247,18 @@ export default function GroupsView({
     setRenamingSharedFile(true);
     try {
       const res = await renameFile(fileId, trimmed);
-      if (res.success) {
+      const newName = (res && res.newName) ? res.newName : trimmed;
+      if (res && res.success) {
         // Update local group details state
         setGroupDetails((prev) => {
           if (!prev || !prev.shares) return prev;
           const updatedShares = prev.shares.map((share) => ({
             ...share,
-            files: (share.files || []).map((f) => (f.id === fileId ? { ...f, name: res.newName || trimmed } : f))
+            files: (share.files || []).map((f) => (f.id === fileId ? { ...f, name: newName } : f))
           }));
           return { ...prev, shares: updatedShares };
         });
-        setSuccess(`File renamed to "${res.newName || trimmed}" successfully.`);
+        setSuccess(`File renamed to "${newName}" successfully.`);
         setTimeout(() => setSuccess(null), 3000);
       }
     } catch (err) {
@@ -952,14 +970,15 @@ export default function GroupsView({
                   <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
                     {stagedChatFiles.map((file, idx) => {
                       const isEditing = editingStagedIndex === idx;
+                      const displayName = file.customName || file.name || 'File';
                       return (
                         <div
-                          key={`${file.name}-${idx}`}
+                          key={`staged-chat-file-${idx}`}
                           className="p-2 sm:p-2.5 rounded-xl bg-white dark:bg-[#2a3942] border border-slate-200/80 dark:border-slate-700/80 flex items-center justify-between gap-2 shadow-2xs group"
                         >
                           <div className="flex items-center gap-2.5 min-w-0 flex-1">
                             <div className="w-7 h-7 rounded-lg bg-slate-100 dark:bg-slate-700/70 flex items-center justify-center shrink-0">
-                              {getFileIcon(file.name)}
+                              {getFileIcon(displayName)}
                             </div>
 
                             {isEditing ? (
@@ -997,12 +1016,12 @@ export default function GroupsView({
                               </div>
                             ) : (
                               <div className="min-w-0 flex-1 flex items-center gap-2">
-                                <span className="text-xs font-semibold text-slate-800 dark:text-slate-100 truncate" title={file.name}>
-                                  {file.name}
+                                <span className="text-xs font-semibold text-slate-800 dark:text-slate-100 truncate" title={displayName}>
+                                  {displayName}
                                 </span>
                                 <button
                                   type="button"
-                                  onClick={() => handleStartStagedRename(idx, file.name)}
+                                  onClick={() => handleStartStagedRename(idx, displayName)}
                                   className="p-1 text-slate-400 hover:text-[#00a884] dark:hover:text-[#00a884] rounded transition-colors"
                                   title="Rename this file before sending in chat"
                                 >
@@ -1176,13 +1195,14 @@ export default function GroupsView({
                           {share.files.map((file) => {
                             const isEditingThisFile = editingSharedFileId === file.id;
                             const canRename = file.isOwner || groupDetails?.isOwner;
+                            const displayName = file.name || 'File';
                             return (
                               <div
                                 key={file.id}
                                 className="flex items-center justify-between gap-2 p-2 rounded-xl bg-white/80 dark:bg-slate-900/60 border border-slate-200/50 dark:border-slate-800 text-xs"
                               >
                                 <div className="flex items-center gap-2 min-w-0 flex-1">
-                                  {getFileIcon(file.name)}
+                                  {getFileIcon(displayName)}
 
                                   {isEditingThisFile ? (
                                     <div className="flex items-center gap-1.5 flex-1">
@@ -1217,15 +1237,15 @@ export default function GroupsView({
                                     </div>
                                   ) : (
                                     <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                                      <span className="font-semibold text-slate-800 dark:text-slate-200 truncate" title={file.name}>
-                                        {file.name}
+                                      <span className="font-semibold text-slate-800 dark:text-slate-200 truncate" title={displayName}>
+                                        {displayName}
                                       </span>
                                       {canRename && (
                                         <button
                                           type="button"
                                           onClick={() => {
                                             setEditingSharedFileId(file.id);
-                                            setSharedFileRenameInput(file.name);
+                                            setSharedFileRenameInput(displayName);
                                           }}
                                           className="p-1 text-slate-400 hover:text-[#00a884] rounded transition-colors"
                                           title="Rename this file"

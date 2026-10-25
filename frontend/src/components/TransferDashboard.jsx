@@ -112,8 +112,20 @@ export default function TransferDashboard({
       const updated = [...prev];
       const f = updated[index];
       if (f) {
-        const renamed = new File([f], newName, { type: f.type, lastModified: f.lastModified });
-        updated[index] = renamed;
+        try {
+          Object.defineProperty(f, 'name', { value: newName, writable: true, configurable: true });
+        } catch (e) {}
+        f.customName = newName;
+        try {
+          const renamed = new File([f], newName, { type: f.type, lastModified: f.lastModified });
+          renamed.customName = newName;
+          try {
+            Object.defineProperty(renamed, 'name', { value: newName, writable: true, configurable: true });
+          } catch (e) {}
+          updated[index] = renamed;
+        } catch (e) {
+          updated[index] = f;
+        }
       }
       return updated;
     });
