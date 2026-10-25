@@ -179,7 +179,7 @@ export default function MyFilesView({
 
   const handleExecuteRevoke = async (shareToken, revokeToken, targetId) => {
     if (!shareToken || !revokeToken) {
-      setError('Cannot revoke: Missing revocation token.');
+      setError('Cannot delete: Missing delete key.');
       return;
     }
     setRevokingId(targetId);
@@ -262,7 +262,7 @@ export default function MyFilesView({
             <FileText className="w-10 h-10 text-slate-300 dark:text-slate-600 mx-auto" />
             <h3 className="text-sm font-bold text-slate-700 dark:text-slate-200">No transfers on this device yet</h3>
             <p className="text-xs text-slate-400 max-w-sm mx-auto">
-              Files you upload will appear here with instant download links, 6-digit codes, QR codes, and secret revocation keys.
+              Files you upload will appear here with instant download links, 6-digit codes, QR codes, and secret delete keys.
             </p>
           </div>
         ) : (
@@ -461,7 +461,7 @@ export default function MyFilesView({
               My Files
             </h1>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              Manage your uploaded documents, download links, 6-digit codes, QR codes, and secret revocation keys.
+              Manage your uploaded documents, download links, 6-digit codes, QR codes, and secret delete keys.
             </p>
           </div>
 
@@ -569,7 +569,7 @@ export default function MyFilesView({
           <p className="text-xs text-slate-400 max-w-sm mx-auto">
             {category === 'trash'
               ? 'Your trash bin is currently empty.'
-              : 'Files you upload will appear here with instant download links, QR codes, and revocation keys.'}
+              : 'Files you upload will appear here with instant download links, QR codes, and secret delete keys.'}
           </p>
         </div>
       ) : (
@@ -694,7 +694,7 @@ export default function MyFilesView({
                               ? 'bg-rose-50 dark:bg-rose-950/40 border-rose-200 dark:border-rose-900 text-rose-700 dark:text-rose-300'
                               : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700'
                           }`}
-                          title="View share link, QR code, and secret revocation key"
+                          title="View share link, QR code, and secret delete key"
                         >
                           <KeyRound className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400" />
                           <span>Share & Key</span>
@@ -726,7 +726,7 @@ export default function MyFilesView({
                 {isExpanded && category !== 'trash' && (
                   <div className="mt-3.5 p-3.5 bg-slate-50 dark:bg-slate-800/80 rounded-2xl border border-slate-200/80 dark:border-slate-700 space-y-3 animate-fade-in">
                     <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
-                      Share & Revocation Controls
+                      Share & Delete Controls
                     </div>
 
                     <div className="flex flex-wrap items-center gap-2 text-xs">
@@ -772,7 +772,7 @@ export default function MyFilesView({
                         </button>
                       )}
 
-                      {/* Secret Revocation Key */}
+                      {/* Secret Delete Key */}
                       {file.revokeToken && (
                         <button
                           type="button"
@@ -785,7 +785,7 @@ export default function MyFilesView({
                           title={file.revokeToken}
                         >
                           {isCopiedKey ? <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" /> : <ShieldAlert className="w-3.5 h-3.5 text-amber-500" />}
-                          <span>{isCopiedKey ? 'Revocation Key Copied!' : 'Copy Revoke Key'}</span>
+                          <span>{isCopiedKey ? 'Delete Key Copied!' : 'Copy Delete Key'}</span>
                         </button>
                       )}
 

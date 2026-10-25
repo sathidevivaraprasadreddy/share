@@ -524,7 +524,7 @@ export default function TransferDashboard({
                     </span>
                   </div>
                   <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-                    View your 6-digit code, share link, QR code, and secret revocation key anytime.
+                    View your 6-digit code, share link, QR code, and secret delete key anytime.
                   </p>
                 </div>
               </div>
@@ -732,7 +732,7 @@ export default function TransferDashboard({
                             onShareCompleted(item);
                           }}
                           className="px-2.5 py-1 rounded-lg bg-rose-50 dark:bg-rose-950/50 hover:bg-rose-100 dark:hover:bg-rose-900/60 text-rose-700 dark:text-rose-300 text-xs font-semibold flex items-center gap-1 transition-all"
-                          title="View 6-Digit Code, QR Code, and Revocation Key"
+                          title="View 6-Digit Code, QR Code, and Delete Key"
                         >
                           <KeyRound className="w-3 h-3 text-rose-600 dark:text-rose-400" />
                           <span>Code & Key</span>

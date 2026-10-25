@@ -39,7 +39,6 @@ import {
   Smile,
   CheckCheck,
   Paperclip,
-  FileUp,
   Loader2
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
@@ -868,15 +867,6 @@ export default function GroupsView({
                 <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">
                   Files Shared with Group ({groupDetails?.shares?.length || 0})
                 </h3>
-                <button
-                  type="button"
-                  onClick={() => groupFileInputRef.current?.click()}
-                  disabled={groupUploading}
-                  className="py-1.5 px-3 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-xs transition-colors"
-                >
-                  <FileUp className="w-3.5 h-3.5" />
-                  <span>+ Share Files to Group</span>
-                </button>
               </div>
 
               {groupUploading && (
@@ -891,7 +881,7 @@ export default function GroupsView({
 
               {groupDetails?.shares?.length === 0 ? (
                 <div className="p-8 text-center bg-slate-50 dark:bg-slate-800/50 rounded-2xl text-xs text-slate-400">
-                  No files have been shared with this group yet. Click <strong>+ Share Files to Group</strong> above or use the paperclip in Group Chat.
+                  No files have been shared with this group yet. Use the paperclip (📎) icon in the Group Chat to share files with everyone.
                 </div>
               ) : (
                 <div className="space-y-2">

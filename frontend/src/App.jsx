@@ -397,7 +397,7 @@ export default function App() {
         isOpen={revokeModalOpen}
         onClose={() => setRevokeModalOpen(false)}
         onSuccess={() => {
-          setSuccessNotification('Files shredded and transfer permanently revoked.');
+          setSuccessNotification('Files permanently deleted and link closed.');
           setRevokeModalOpen(false);
           handleResetToUpload();
         }}

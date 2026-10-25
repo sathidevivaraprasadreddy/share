@@ -36,7 +36,7 @@ export default function RevokeModal({ isOpen, onClose, onSuccess }) {
       return;
     }
     if (!cleanKey) {
-      setError('Please enter your secret Revocation Key.');
+      setError('Please enter your secret delete key.');
       return;
     }
 

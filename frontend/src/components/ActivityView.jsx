@@ -98,7 +98,7 @@ export default function ActivityView({ user, onRequireAuth }) {
             Transfer Activity & Audit Log
           </h1>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-            Comprehensive event timeline of uploads, transfers, recipient downloads, and revocations.
+            Comprehensive event timeline of uploads, transfers, recipient downloads, and early file deletions.
           </p>
         </div>
         {logs.length > 0 && (
