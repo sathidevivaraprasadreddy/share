@@ -19,7 +19,12 @@ class SqliteAdapter {
     const isTest = process.env.NODE_ENV === 'test';
     const dbPath = isTest
       ? path.resolve(__dirname, '../../database/quickshare_test.sqlite')
-      : options.filePath || path.resolve(__dirname, '../../database/quickshare.sqlite');
+      : options.filePath || process.env.DB_PATH || path.resolve(__dirname, '../../database/quickshare.sqlite');
+
+    // Ensure database folder exists
+    try {
+      fs.mkdirSync(path.dirname(dbPath), { recursive: true });
+    } catch (e) {}
 
     // Dynamic import from node:sqlite
     const { DatabaseSync } = (awaitImportNodeSqlite());
