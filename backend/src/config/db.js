@@ -237,17 +237,18 @@ class MysqlAdapter {
 export function getDbPool() {
   if (activeAdapter) return activeAdapter;
 
+  const isUrlConfig = Boolean(process.env.DATABASE_URL);
+
   const preferSqlite =
-    process.env.DB_CLIENT === 'sqlite' ||
-    (process.env.NODE_ENV === 'test' && !process.env.DATABASE_URL);
+    !isUrlConfig &&
+    (process.env.DB_CLIENT === 'sqlite' ||
+      (process.env.NODE_ENV === 'test' && !process.env.DATABASE_URL));
 
   if (preferSqlite) {
     activeAdapter = new SqliteAdapter();
     console.log('[Database] Using zero-config SQLite database engine.');
     return activeAdapter;
   }
-
-  const isUrlConfig = Boolean(process.env.DATABASE_URL);
 
   try {
     let pool;
