@@ -753,17 +753,22 @@ export default function GroupsView({
             </div>
 
             <div className="flex items-center gap-2 flex-wrap">
-              {groupDetails?.inviteCode && (
+              {(groupDetails?.inviteCode || selectedGroup?.inviteCode) && (
                 <>
                   <button
-                    onClick={() => handleCopyInviteLink(groupDetails.inviteCode)}
+                    onClick={() => handleCopyInviteLink(groupDetails?.inviteCode || selectedGroup?.inviteCode)}
                     className="px-3 py-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors"
                   >
                     {copiedInvite ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5 text-slate-500" />}
                     <span>{copiedInvite ? 'Copied' : 'Invite Link'}</span>
                   </button>
                   <button
-                    onClick={() => setQrModalGroup(groupDetails)}
+                    onClick={() => setQrModalGroup({
+                      ...selectedGroup,
+                      ...groupDetails,
+                      name: groupDetails?.name || selectedGroup?.name,
+                      inviteCode: groupDetails?.inviteCode || selectedGroup?.inviteCode
+                    })}
                     className="px-3 py-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors"
                   >
                     <QrCode className="w-3.5 h-3.5 text-slate-600 dark:text-slate-300" />
@@ -860,9 +865,9 @@ export default function GroupsView({
                 </div>
 
                 <div className="flex items-center gap-1.5">
-                  {groupDetails?.inviteCode && (
+                  {(groupDetails?.inviteCode || selectedGroup?.inviteCode) && (
                     <a
-                      href={`https://api.whatsapp.com/send?text=${encodeURIComponent(`Join our "${groupDetails.name}" group on QuickShare:\n🔗 ${getInviteUrl(groupDetails.inviteCode)}`)}`}
+                      href={`https://api.whatsapp.com/send?text=${encodeURIComponent(`Join our "${groupDetails?.name || selectedGroup?.name}" group on QuickShare:\n🔗 ${getInviteUrl(groupDetails?.inviteCode || selectedGroup?.inviteCode)}`)}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="px-2.5 py-1 bg-[#25D366] hover:bg-[#20ba59] text-white rounded-lg text-[11px] font-bold flex items-center gap-1 shadow-2xs transition-colors"
@@ -873,7 +878,15 @@ export default function GroupsView({
                     </a>
                   )}
                   <button
-                    onClick={() => setQrModalGroup(groupDetails)}
+                    onClick={() => {
+                      const activeCode = groupDetails?.inviteCode || selectedGroup?.inviteCode;
+                      setQrModalGroup({
+                        ...selectedGroup,
+                        ...groupDetails,
+                        name: groupDetails?.name || selectedGroup?.name || 'Group',
+                        inviteCode: activeCode
+                      });
+                    }}
                     className="p-1.5 bg-white dark:bg-slate-800 hover:bg-slate-100 text-slate-600 dark:text-slate-300 rounded-lg text-xs"
                     title="Scan QR to join"
                   >
@@ -1406,7 +1419,12 @@ export default function GroupsView({
                         {copiedInvite ? 'Copied Link!' : 'Copy Link'}
                       </button>
                       <button
-                        onClick={() => setQrModalGroup(groupDetails)}
+                        onClick={() => setQrModalGroup({
+                          ...selectedGroup,
+                          ...groupDetails,
+                          name: groupDetails?.name || selectedGroup?.name,
+                          inviteCode: groupDetails?.inviteCode || selectedGroup?.inviteCode
+                        })}
                         className="px-3.5 py-1.5 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-2xs transition-colors"
                       >
                         <QrCode className="w-3.5 h-3.5 text-slate-600 dark:text-slate-300" />
@@ -1658,51 +1676,87 @@ export default function GroupsView({
       )}
 
       {/* Group QR Code Modal */}
-      {qrModalGroup && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
-          <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-sm w-full p-6 shadow-2xl border border-slate-100 dark:border-slate-800 relative text-center space-y-4">
-            <button
-              onClick={() => setQrModalGroup(null)}
-              className="absolute top-5 right-5 p-2 rounded-full text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
-            >
-              <X className="w-5 h-5" />
-            </button>
+      {qrModalGroup && (() => {
+        const activeCode = qrModalGroup.inviteCode || groupDetails?.inviteCode || selectedGroup?.inviteCode || '';
+        const inviteUrl = activeCode ? getInviteUrl(activeCode) : `${window.location.origin}/?groupInvite=${qrModalGroup.id}`;
+        const groupDisplayName = qrModalGroup.name || groupDetails?.name || selectedGroup?.name || 'Group';
 
-            <div className="w-12 h-12 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mx-auto">
-              <QrCode className="w-6 h-6" />
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
+            <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-sm w-full p-6 shadow-2xl border border-slate-100 dark:border-slate-800 relative text-center space-y-4">
+              <button
+                onClick={() => setQrModalGroup(null)}
+                className="absolute top-5 right-5 p-2 rounded-full text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
+              >
+                <X className="w-5 h-5" />
+              </button>
+
+              <div className="w-12 h-12 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mx-auto">
+                <QrCode className="w-6 h-6" />
+              </div>
+
+              <div>
+                <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                  Join "{groupDisplayName}"
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                  Scan with any phone camera to join this group instantly.
+                </p>
+              </div>
+
+              <div className="p-4 bg-white rounded-2xl border border-slate-200 dark:border-slate-700 inline-block shadow-inner">
+                {activeCode ? (
+                  <QRCodeSVG
+                    value={inviteUrl}
+                    size={200}
+                    level="M"
+                    includeMargin={false}
+                  />
+                ) : (
+                  <div className="w-[200px] h-[200px] flex items-center justify-center text-xs text-slate-400">
+                    Generating QR code...
+                  </div>
+                )}
+              </div>
+
+              {activeCode ? (
+                <div className="text-xs font-mono font-bold text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-800 py-1.5 px-3 rounded-xl inline-block">
+                  Code: <span className="text-[#00a884] dark:text-[#00a884]">{activeCode}</span>
+                </div>
+              ) : null}
+
+              {activeCode ? (
+                <div className="flex items-center justify-center gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => handleCopyInviteLink(activeCode)}
+                    className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors"
+                  >
+                    {copiedInvite ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5 text-slate-500" />}
+                    <span>{copiedInvite ? 'Copied Link!' : 'Copy Link'}</span>
+                  </button>
+                  <a
+                    href={`https://api.whatsapp.com/send?text=${encodeURIComponent(`Join our "${groupDisplayName}" group on QuickShare:\n🔗 ${inviteUrl}`)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="px-3 py-1.5 bg-[#25D366] hover:bg-[#20ba59] text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-2xs transition-colors"
+                  >
+                    <MessageCircle className="w-3.5 h-3.5" />
+                    <span>WhatsApp</span>
+                  </a>
+                </div>
+              ) : null}
+
+              <button
+                onClick={() => setQrModalGroup(null)}
+                className="w-full py-2 bg-slate-900 hover:bg-slate-800 dark:bg-rose-600 dark:hover:bg-rose-700 text-white rounded-xl text-xs font-semibold transition-colors mt-2"
+              >
+                Done
+              </button>
             </div>
-
-            <div>
-              <h3 className="text-base font-bold text-slate-900 dark:text-white">
-                Join "{qrModalGroup.name}"
-              </h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                Scan with any phone camera to join this group instantly.
-              </p>
-            </div>
-
-            <div className="p-4 bg-white rounded-2xl border border-slate-200 dark:border-slate-700 inline-block shadow-inner">
-              <QRCodeSVG
-                value={getInviteUrl(qrModalGroup.inviteCode)}
-                size={200}
-                level="M"
-                includeMargin={false}
-              />
-            </div>
-
-            <div className="text-xs font-mono font-bold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 py-1.5 px-3 rounded-xl inline-block">
-              Code: {qrModalGroup.inviteCode}
-            </div>
-
-            <button
-              onClick={() => setQrModalGroup(null)}
-              className="w-full py-2 bg-slate-900 hover:bg-slate-800 dark:bg-rose-600 dark:hover:bg-rose-700 text-white rounded-xl text-xs font-semibold transition-colors"
-            >
-              Done
-            </button>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* Hidden file input for group direct file sharing */}
       <input

@@ -107,7 +107,7 @@ export async function getGroupDetails(req, res, next) {
     const db = getDbPool();
 
     const [groups] = await db.query(
-      `SELECT id, name, description, owner_user_id, created_at FROM groups WHERE id = ?`,
+      `SELECT id, name, description, invite_code, owner_user_id, created_at FROM groups WHERE id = ?`,
       [id]
     );
 
@@ -126,6 +126,15 @@ export async function getGroupDetails(req, res, next) {
     }
 
     const group = groups[0];
+
+    // Ensure group has a valid invite code
+    let inviteCode = group.invite_code;
+    if (!inviteCode) {
+      inviteCode = crypto.randomBytes(4).toString('hex');
+      try {
+        await db.query(`UPDATE groups SET invite_code = ? WHERE id = ?`, [inviteCode, group.id]);
+      } catch (e) {}
+    }
 
     // Get members
     const [members] = await db.query(
@@ -184,6 +193,7 @@ export async function getGroupDetails(req, res, next) {
         id: group.id,
         name: group.name,
         description: group.description,
+        inviteCode: inviteCode,
         isOwner: group.owner_user_id === userId,
         members: members.map((m) => ({
           id: m.id,
