@@ -9,6 +9,9 @@ export function formatFileSize(bytes) {
   return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`;
 }
 
+export const formatBytes = formatFileSize;
+
+
 /**
  * Format remaining expiration time
  */

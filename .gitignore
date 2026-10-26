@@ -36,12 +36,17 @@ logs/
 # QuickShare uploaded storage (local dev)
 backend/uploads/*
 !backend/uploads/.gitkeep
+uploads/*
+!uploads/.gitkeep
 
 # Local developer tools
 tools/
 
 # Local reference and credentials manuals
 steps.txt
+*.sqlite
+*.sqlite-journal
+*.db
 
 # Presentation files
 create_presentation.py
