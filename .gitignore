@@ -54,3 +54,5 @@ create_showcase_images.py
 build_clean_presentation.py
 capture_real_screenshots.js
 real_shot_transfer.png
+build_comprehensive_presentation.py
+capture_all_screens.js
