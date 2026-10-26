@@ -1,13 +1,17 @@
 {
   "name": "quickshare-project",
   "version": "1.0.0",
-  "description": "QuickShare - Complete Free File Sharing Solution",
+  "description": "QuickShare - Fast, Free & Private File Sharing Solution",
   "private": true,
   "scripts": {
+    "start": "node backend/src/server.js",
+    "build": "npm --prefix frontend install && npm --prefix frontend run build && npm --prefix backend install",
     "backend": "npm --prefix backend run dev",
     "frontend": "npm --prefix frontend run dev",
+    "test": "npm --prefix backend test",
     "backend:test": "npm --prefix backend test",
     "frontend:build": "npm --prefix frontend run build",
-    "migrate": "npm --prefix backend run migrate"
+    "migrate": "npm --prefix backend run migrate",
+    "reset:data": "npm --prefix backend run reset"
   }
 }

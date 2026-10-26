@@ -52,3 +52,12 @@ quickshare_logo.png
 # OS files
 Thumbs.db
 .DS_Store
+
+# Temporary backups and local artifacts
+*-prasad*
+uploads/
+backend/uploads/*
+!backend/uploads/.gitkeep
+backend/database/*.sqlite
+backend/database/*.sqlite-journal
+backend/test_feature.txt

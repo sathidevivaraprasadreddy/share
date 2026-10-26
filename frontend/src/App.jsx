@@ -1,34 +1,235 @@
 import React, { useState, useEffect } from 'react';
 import Navbar from './components/Navbar';
-import FileUploader from './components/FileUploader';
-import FileList from './components/FileList';
+import TransferDashboard from './components/TransferDashboard';
 import ShareResult from './components/ShareResult';
 import DownloadView from './components/DownloadView';
 import QRCodeModal from './components/QRCodeModal';
-import { uploadFiles, revokeSession, checkHealth } from './services/api';
-import { AlertCircle, CheckCircle, ShieldCheck, Zap, Lock, RefreshCw } from 'lucide-react';
+import AuthModal from './components/AuthModal';
+import ProfileModal from './components/ProfileModal';
+import RevokeModal from './components/RevokeModal';
+import InboxView from './components/InboxView';
+import MyFilesView from './components/MyFilesView';
+import GroupsView from './components/GroupsView';
+import ActivityView from './components/ActivityView';
+import AdminControlCenter from './components/AdminControlCenter';
+import { checkHealth, getMe, logoutUser, revokeSession, getInbox } from './services/api';
+import { playNotificationPing } from './utils/audio';
+import { AlertCircle, CheckCircle, ShieldCheck, Upload, WifiOff, X, Lock } from 'lucide-react';
 
 export default function App() {
+  const [currentView, setCurrentView] = useState('transfer'); // 'transfer' | 'inbox' | 'my-files' | 'groups' | 'activity'
+  const [currentUser, setCurrentUser] = useState(null);
   const [tokenParam, setTokenParam] = useState(null);
-  const [files, setFiles] = useState([]);
-  const [expiryHours, setExpiryHours] = useState(24);
-  const [uploading, setUploading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(0);
-  const [shareResult, setShareResult] = useState(null);
+  const [pendingGroupInvite, setPendingGroupInvite] = useState(null);
+  const [shareResult, setShareResult] = useState(() => {
+    try {
+      const saved = localStorage.getItem('quickshare_active_share');
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
+  const [isViewingShareResult, setIsViewingShareResult] = useState(() => {
+    try {
+      return Boolean(localStorage.getItem('quickshare_active_share'));
+    } catch {
+      return false;
+    }
+  });
   const [qrModalUrl, setQrModalUrl] = useState(null);
+
+  // Dark Mode Night Theme
+  const [darkMode, setDarkMode] = useState(() => {
+    try {
+      const saved = localStorage.getItem('quickshare_theme');
+      if (saved) return saved === 'dark';
+      return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    } catch {
+      return false;
+    }
+  });
+
+  useEffect(() => {
+    if (darkMode) {
+      document.documentElement.classList.add('dark');
+      document.body.classList.add('dark');
+      try { localStorage.setItem('quickshare_theme', 'dark'); } catch {}
+    } else {
+      document.documentElement.classList.remove('dark');
+      document.body.classList.remove('dark');
+      try { localStorage.setItem('quickshare_theme', 'light'); } catch {}
+    }
+  }, [darkMode]);
+
+  const toggleDarkMode = () => setDarkMode((prev) => !prev);
+
+  // Private Administrative Control Center route detection (/control-center, /admin, #/admin)
+  const checkAdminRoute = () => {
+    const path = (window.location.pathname || '').toLowerCase();
+    const hash = (window.location.hash || '').toLowerCase();
+    return (
+      path.startsWith('/control-center') ||
+      path.startsWith('/admin') ||
+      hash === '#/control-center' ||
+      hash === '#/admin' ||
+      hash === '#admin'
+    );
+  };
+
+  const [isAdminRoute, setIsAdminRoute] = useState(checkAdminRoute);
+
+  useEffect(() => {
+    const handlePopState = () => {
+      setIsAdminRoute(checkAdminRoute());
+    };
+    window.addEventListener('popstate', handlePopState);
+    window.addEventListener('hashchange', handlePopState);
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+      window.removeEventListener('hashchange', handlePopState);
+    };
+  }, []);
+
+  // Modals
+  const [authModalOpen, setAuthModalOpen] = useState(false);
+  const [profileModalOpen, setProfileModalOpen] = useState(false);
+  const [revokeModalOpen, setRevokeModalOpen] = useState(false);
+
+  // Feedback notifications
   const [errorMessage, setErrorMessage] = useState(null);
   const [successNotification, setSuccessNotification] = useState(null);
   const [serverHealthy, setServerHealthy] = useState(null);
+  const [unreadInboxCount, setUnreadInboxCount] = useState(0);
 
-  // Check URL query parameters for token (e.g. ?token=abc)
+  // Network connection monitor
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
+
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const token = params.get('token');
-    if (token) {
-      setTokenParam(token);
+    const handleOnline = () => {
+      setIsOnline(true);
+      setSuccessNotification('You are back online!');
+      setTimeout(() => setSuccessNotification(null), 3000);
+    };
+    const handleOffline = () => {
+      setIsOnline(false);
+      setErrorMessage('Internet disconnected. You are currently offline.');
+    };
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
+
+  // Global Drag-and-Drop anywhere across the application
+  const [isDraggingOverWindow, setIsDraggingOverWindow] = useState(false);
+  const [globalDroppedFiles, setGlobalDroppedFiles] = useState([]);
+  const dragCounter = React.useRef(0);
+
+  useEffect(() => {
+    const handleDragEnter = (e) => {
+      e.preventDefault();
+      dragCounter.current += 1;
+      if (e.dataTransfer && e.dataTransfer.types && Array.from(e.dataTransfer.types).includes('Files')) {
+        setIsDraggingOverWindow(true);
+      }
+    };
+
+    const handleDragLeave = (e) => {
+      e.preventDefault();
+      dragCounter.current -= 1;
+      if (dragCounter.current <= 0) {
+        setIsDraggingOverWindow(false);
+        dragCounter.current = 0;
+      }
+    };
+
+    const handleDragOver = (e) => {
+      e.preventDefault();
+    };
+
+    const handleDrop = (e) => {
+      e.preventDefault();
+      dragCounter.current = 0;
+      setIsDraggingOverWindow(false);
+
+      if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+        const filesArray = Array.from(e.dataTransfer.files);
+        setGlobalDroppedFiles(filesArray);
+        setCurrentView('transfer');
+        setIsViewingShareResult(false);
+        setTokenParam(null);
+      }
+    };
+
+    window.addEventListener('dragenter', handleDragEnter);
+    window.addEventListener('dragleave', handleDragLeave);
+    window.addEventListener('dragover', handleDragOver);
+    window.addEventListener('drop', handleDrop);
+
+    return () => {
+      window.removeEventListener('dragenter', handleDragEnter);
+      window.removeEventListener('dragleave', handleDragLeave);
+      window.removeEventListener('dragover', handleDragOver);
+      window.removeEventListener('drop', handleDrop);
+    };
+  }, []);
+
+  // Live In-App Notification & Audio Ping for direct-to-inbox transfers
+  useEffect(() => {
+    if (!currentUser) {
+      setUnreadInboxCount(0);
+      return;
     }
 
-    // Health check
+    let isMounted = true;
+    let prevCount = null;
+
+    async function pollInbox() {
+      try {
+        const res = await getInbox('unread');
+        if (res.success && isMounted) {
+          const count = res.count || 0;
+          setUnreadInboxCount(count);
+          if (prevCount !== null && count > prevCount) {
+            playNotificationPing();
+            setSuccessNotification('You received a new direct transfer in your Inbox!');
+            setTimeout(() => setSuccessNotification(null), 5000);
+          }
+          prevCount = count;
+        }
+      } catch {}
+    }
+
+    pollInbox();
+    const timer = setInterval(pollInbox, 12000);
+
+    return () => {
+      isMounted = false;
+      clearInterval(timer);
+    };
+  }, [currentUser]);
+
+  // Check URL query parameters and verify user auth session
+  useEffect(() => {
+    // 1. Check for ?token=xyz or /share/xyz or ?groupInvite=xyz in URL
+    const params = new URLSearchParams(window.location.search);
+    const token = params.get('token');
+    const groupInvite = params.get('groupInvite');
+    if (groupInvite) {
+      setPendingGroupInvite(groupInvite);
+      setCurrentView('groups');
+    } else if (token) {
+      setTokenParam(token);
+    } else {
+      const match = window.location.pathname.match(/\/share\/([a-zA-Z0-9_-]+)/);
+      if (match) {
+        setTokenParam(match[1]);
+      }
+    }
+
+    // 2. Health check
     async function verifyBackend() {
       try {
         const res = await checkHealth();
@@ -42,6 +243,25 @@ export default function App() {
       }
     }
     verifyBackend();
+
+    // 3. User session check if token exists in localStorage
+    async function loadCurrentUser() {
+      const savedToken = localStorage.getItem('quickshare_token');
+      if (savedToken) {
+        try {
+          const res = await getMe();
+          if (res.success && res.user) {
+            setCurrentUser(res.user);
+          }
+        } catch (err) {
+          if (err.response?.status === 401) {
+            localStorage.removeItem('quickshare_token');
+            setCurrentUser(null);
+          }
+        }
+      }
+    }
+    loadCurrentUser();
   }, []);
 
   // Clear notifications after timeout
@@ -59,47 +279,16 @@ export default function App() {
     }
   }, [successNotification]);
 
-  const handleFilesSelected = (newFiles) => {
-    setErrorMessage(null);
-    setFiles((prev) => {
-      // Append without duplicate filenames
-      const existingNames = new Set(prev.map((f) => f.name));
-      const filtered = newFiles.filter((f) => !existingNames.has(f.name));
-      return [...prev, ...filtered];
-    });
-  };
-
-  const handleRemoveFile = (index) => {
-    setFiles((prev) => prev.filter((_, i) => i !== index));
-  };
-
-  const handleClearFiles = () => {
-    setFiles([]);
-    setErrorMessage(null);
-  };
-
-  const handleUpload = async () => {
-    if (files.length === 0) return;
-    setUploading(true);
-    setUploadProgress(0);
-    setErrorMessage(null);
-
-    try {
-      const result = await uploadFiles(files, expiryHours, (progress) => {
-        setUploadProgress(progress);
-      });
-
-      if (result.success) {
-        setShareResult(result);
-        setFiles([]);
-      } else {
-        setErrorMessage(result.error || 'Failed to upload files.');
-      }
-    } catch (err) {
-      const msg = err.response?.data?.error || err.message || 'Error uploading files.';
-      setErrorMessage(msg);
-    } finally {
-      setUploading(false);
+  const handleShareCompleted = (result) => {
+    setShareResult(result);
+    if (result) {
+      try {
+        localStorage.setItem('quickshare_active_share', JSON.stringify(result));
+      } catch {}
+      setIsViewingShareResult(true);
+    } else {
+      localStorage.removeItem('quickshare_active_share');
+      setIsViewingShareResult(false);
     }
   };
 
@@ -107,11 +296,26 @@ export default function App() {
     try {
       const res = await revokeSession(shareToken, revokeToken);
       if (res.success) {
-        setSuccessNotification('Sharing session has been revoked and files deleted.');
-        setShareResult(null);
+        setSuccessNotification('Sharing session revoked and files removed permanently from storage.');
+        if (shareResult && shareResult.shareToken === shareToken) {
+          setShareResult(null);
+          localStorage.removeItem('quickshare_active_share');
+          setIsViewingShareResult(false);
+        }
+        try {
+          const raw = localStorage.getItem('quickshare_recent_transfers');
+          if (raw) {
+            const list = JSON.parse(raw);
+            const updated = list.filter((t) => t.shareToken !== shareToken);
+            localStorage.setItem('quickshare_recent_transfers', JSON.stringify(updated));
+          }
+        } catch {}
+        return true;
       }
+      return false;
     } catch (err) {
       setErrorMessage(err.response?.data?.error || 'Failed to revoke session.');
+      return false;
     }
   };
 
@@ -122,121 +326,225 @@ export default function App() {
     window.history.pushState({}, '', url.pathname);
 
     setTokenParam(null);
-    setShareResult(null);
-    setFiles([]);
     setErrorMessage(null);
+    setIsViewingShareResult(false);
+    setCurrentView('transfer');
   };
 
+  const handleLogout = () => {
+    logoutUser();
+    setCurrentUser(null);
+    setProfileModalOpen(false);
+    setSuccessNotification('Logged out successfully.');
+    if (currentView !== 'transfer') {
+      setCurrentView('transfer');
+    }
+  };
+
+  if (isAdminRoute) {
+    return (
+      <AdminControlCenter
+        onExit={() => {
+          window.history.pushState({}, '', '/');
+          setIsAdminRoute(false);
+        }}
+      />
+    );
+  }
+
   return (
-    <div className="min-h-screen flex flex-col bg-gradient-to-b from-slate-50 via-slate-50 to-slate-100">
-      {/* Navigation */}
-      <Navbar onReset={handleResetToUpload} serverHealthy={serverHealthy} />
+    <div className={`min-h-screen flex flex-col font-sans transition-colors duration-200 antialiased selection:bg-rose-500 selection:text-white ${
+      darkMode
+        ? 'dark bg-slate-950 text-slate-100'
+        : 'bg-gradient-to-b from-slate-50 via-slate-50 to-slate-100 text-slate-900'
+    }`}>
+      {/* Navigation Header */}
+      <Navbar
+        currentView={currentView}
+        onChangeView={(view) => {
+          setTokenParam(null);
+          setCurrentView(view);
+        }}
+        activeShare={shareResult}
+        isViewingShareResult={Boolean(shareResult && !tokenParam && currentView === 'transfer' && isViewingShareResult)}
+        onSelectActiveShare={() => {
+          setTokenParam(null);
+          setCurrentView('transfer');
+          setIsViewingShareResult(true);
+        }}
+        currentUser={currentUser}
+        onOpenAuth={() => setAuthModalOpen(true)}
+        onOpenProfile={() => setProfileModalOpen(true)}
+        onOpenRevoke={() => setRevokeModalOpen(true)}
+        onReset={handleResetToUpload}
+        onSelectShare={(token) => {
+          setTokenParam(token);
+          setCurrentView('transfer');
+        }}
+        serverHealthy={serverHealthy}
+        darkMode={darkMode}
+        onToggleDarkMode={toggleDarkMode}
+        unreadInboxCount={unreadInboxCount}
+      />
+
+      {/* Offline Status Warning Bar */}
+      {!isOnline && (
+        <div className="bg-amber-500 text-slate-950 text-xs font-bold py-1.5 px-4 text-center flex items-center justify-center gap-2 shadow-sm animate-fade-in">
+          <WifiOff className="w-3.5 h-3.5" />
+          <span>You are currently offline. Transfers will automatically resume once reconnected.</span>
+        </div>
+      )}
+
+      {/* Floating Notifications (Zero Layout Shift) */}
+      {(errorMessage || successNotification) && (
+        <div className="fixed top-5 left-1/2 -translate-x-1/2 z-50 max-w-md w-[92%] sm:w-auto animate-toast pointer-events-auto">
+          {errorMessage && (
+            <div className="p-3.5 sm:px-4 sm:py-3 rounded-2xl bg-white dark:bg-slate-900 border border-rose-200 dark:border-rose-900/60 shadow-xl text-rose-700 dark:text-rose-300 flex items-center gap-3">
+              <AlertCircle className="w-5 h-5 shrink-0 text-rose-500" />
+              <div className="text-xs sm:text-sm font-semibold flex-1 leading-snug">{errorMessage}</div>
+              <button
+                onClick={() => setErrorMessage(null)}
+                className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          )}
+          {successNotification && (
+            <div className="p-3.5 sm:px-4 sm:py-3 rounded-2xl bg-white dark:bg-slate-900 border border-emerald-200 dark:border-emerald-900/60 shadow-xl text-emerald-800 dark:text-emerald-300 flex items-center gap-3">
+              <CheckCircle className="w-5 h-5 shrink-0 text-emerald-500" />
+              <div className="text-xs sm:text-sm font-semibold flex-1 leading-snug">{successNotification}</div>
+              <button
+                onClick={() => setSuccessNotification(null)}
+                className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Global Drag & Drop Overlay */}
+      {isDraggingOverWindow && (
+        <div className="fixed inset-0 z-50 bg-slate-950/75 backdrop-blur-md flex items-center justify-center p-6 animate-fade-in pointer-events-none">
+          <div className="w-full max-w-md p-10 rounded-3xl border-2 border-dashed border-rose-400 bg-white/10 text-white text-center space-y-4 shadow-2xl">
+            <div className="w-16 h-16 rounded-2xl bg-rose-500/30 text-rose-400 flex items-center justify-center mx-auto">
+              <Upload className="w-8 h-8 animate-bounce" />
+            </div>
+            <div>
+              <h3 className="text-xl font-bold">Drop files anywhere to share</h3>
+              <p className="text-xs sm:text-sm text-slate-300 mt-1">
+                Release your files to start uploading instantly with QuickShare
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Main Content Area */}
-      <main className="flex-1 max-w-2xl w-full mx-auto px-4 py-8 sm:py-12 flex flex-col justify-center">
-        {/* Alerts / Notifications */}
-        {errorMessage && (
-          <div className="mb-6 p-4 rounded-2xl bg-rose-50 border border-rose-200/90 text-rose-700 flex items-start gap-3 shadow-sm animate-fade-in">
-            <AlertCircle className="w-5 h-5 shrink-0 mt-0.5 text-rose-600" />
-            <div className="text-xs sm:text-sm font-medium flex-1">{errorMessage}</div>
-            <button
-              onClick={() => setErrorMessage(null)}
-              className="text-rose-400 hover:text-rose-700 text-xs font-bold"
-            >
-              ✕
-            </button>
-          </div>
-        )}
-
-        {successNotification && (
-          <div className="mb-6 p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-800 flex items-start gap-3 shadow-sm animate-fade-in">
-            <CheckCircle className="w-5 h-5 shrink-0 mt-0.5 text-emerald-600" />
-            <div className="text-xs sm:text-sm font-medium flex-1">{successNotification}</div>
-          </div>
-        )}
-
-        {/* View Switch: Receiver (DownloadView) vs Sender (Upload/ShareResult) */}
+      <main className="flex-1 max-w-4xl w-full mx-auto px-4 py-8 sm:py-10 flex flex-col">
+        {/* Dynamic View Router */}
         {tokenParam ? (
           <DownloadView
             token={tokenParam}
             onBackToUpload={handleResetToUpload}
           />
-        ) : shareResult ? (
-          <ShareResult
-            result={shareResult}
-            onReset={handleResetToUpload}
-            onShowQR={(url) => setQrModalUrl(url)}
-            onRevoke={handleRevoke}
-          />
         ) : (
-          <div className="space-y-6 animate-fade-in">
-            {/* Header intro */}
-            <div className="text-center space-y-2 mb-2">
-              <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">
-                Send files instantly.
-              </h1>
-              <p className="text-sm sm:text-base text-slate-500 max-w-md mx-auto">
-                No account required. Auto-expires automatically. ₹0 free ephemeral file sharing.
-              </p>
-            </div>
+          <>
+            {currentView === 'transfer' && (
+              isViewingShareResult && shareResult ? (
+                <ShareResult
+                  result={shareResult}
+                  onReset={() => setIsViewingShareResult(false)}
+                  onShowQR={(url) => setQrModalUrl(url)}
+                  onRevoke={handleRevoke}
+                />
+              ) : (
+                <TransferDashboard
+                  currentUser={currentUser}
+                  activeShare={shareResult}
+                  darkMode={darkMode}
+                  externalFiles={globalDroppedFiles}
+                  onClearExternalFiles={() => setGlobalDroppedFiles([])}
+                  onShareCompleted={handleShareCompleted}
+                  onViewActiveShare={() => setIsViewingShareResult(true)}
+                  onReceiveToken={(token) => setTokenParam(token)}
+                  onRequestAuth={() => setAuthModalOpen(true)}
+                  onOpenRevoke={() => setRevokeModalOpen(true)}
+                  onError={(err) => setErrorMessage(err)}
+                  onSuccess={(msg) => setSuccessNotification(msg)}
+                />
+              )
+            )}
 
-            {/* Drag & drop upload area */}
-            <FileUploader
-              onFilesSelected={handleFilesSelected}
-              onError={(msg) => setErrorMessage(msg)}
-            />
-
-            {/* Selected files list & controls */}
-            {files.length > 0 && (
-              <FileList
-                files={files}
-                onRemoveFile={handleRemoveFile}
-                onClearFiles={handleClearFiles}
-                onUpload={handleUpload}
-                uploading={uploading}
-                uploadProgress={uploadProgress}
-                expiryHours={expiryHours}
-                setExpiryHours={setExpiryHours}
+            {currentView === 'inbox' && (
+              <InboxView
+                user={currentUser}
+                onRequireAuth={() => setAuthModalOpen(true)}
               />
             )}
 
-            {/* Feature Highlights */}
-            {files.length === 0 && (
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-6">
-                <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-xs flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center shrink-0">
-                    <Zap className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <h5 className="text-xs font-bold text-slate-800">Lightning Fast</h5>
-                    <p className="text-[11px] text-slate-500">Direct streaming transfer</p>
-                  </div>
-                </div>
-
-                <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-xs flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
-                    <Lock className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <h5 className="text-xs font-bold text-slate-800">Private & Secure</h5>
-                    <p className="text-[11px] text-slate-500">Cryptographic tokens</p>
-                  </div>
-                </div>
-
-                <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-xs flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
-                    <ShieldCheck className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <h5 className="text-xs font-bold text-slate-800">Auto Cleanup</h5>
-                    <p className="text-[11px] text-slate-500">Deletes after expiration</p>
-                  </div>
-                </div>
-              </div>
+            {currentView === 'my-files' && (
+              <MyFilesView
+                user={currentUser}
+                activeShare={shareResult}
+                onRequireAuth={() => setAuthModalOpen(true)}
+                onSelectShare={(token) => setTokenParam(token)}
+                onShowQR={(url) => setQrModalUrl(url)}
+                onRevoke={handleRevoke}
+                onOpenActiveShare={(share) => {
+                  handleShareCompleted(share);
+                  setCurrentView('transfer');
+                  setIsViewingShareResult(true);
+                }}
+              />
             )}
-          </div>
+
+            {currentView === 'groups' && (
+              <GroupsView
+                user={currentUser}
+                onRequireAuth={() => setAuthModalOpen(true)}
+                onSelectShare={(token) => setTokenParam(token)}
+                initialInviteCode={pendingGroupInvite}
+                onClearInitialInviteCode={() => setPendingGroupInvite(null)}
+              />
+            )}
+
+            {currentView === 'activity' && (
+              <ActivityView
+                user={currentUser}
+                onRequireAuth={() => setAuthModalOpen(true)}
+                onSelectShare={(token) => setTokenParam(token)}
+              />
+            )}
+          </>
         )}
       </main>
+
+      {/* Auth Modal (Login & Register) */}
+      <AuthModal
+        isOpen={authModalOpen}
+        onClose={() => setAuthModalOpen(false)}
+        onAuthSuccess={(user) => {
+          setCurrentUser(user);
+          setSuccessNotification(`Welcome, ${user.displayName || user.username}!`);
+        }}
+      />
+
+      {/* Profile & Storage Quota Modal */}
+      <ProfileModal
+        isOpen={profileModalOpen}
+        onClose={() => setProfileModalOpen(false)}
+        user={currentUser}
+        onUpdateUser={(updated) => setCurrentUser(updated)}
+        onLogout={handleLogout}
+        onOpenAdmin={() => {
+          setProfileModalOpen(false);
+          window.history.pushState({}, '', '/admin');
+          setIsAdminRoute(true);
+        }}
+      />
 
       {/* QR Code Modal */}
       {qrModalUrl && (
@@ -246,9 +554,49 @@ export default function App() {
         />
       )}
 
-      {/* Footer */}
-      <footer className="py-6 border-t border-slate-200/80 bg-white/60 text-center text-xs text-slate-400">
-        <p>QuickShare • Free & Open Source Ephemeral File Sharing</p>
+      {/* Emergency Revoke with Key Modal */}
+      <RevokeModal
+        isOpen={revokeModalOpen}
+        onClose={() => setRevokeModalOpen(false)}
+        onSuccess={() => {
+          setSuccessNotification('Files permanently deleted and link closed.');
+          setRevokeModalOpen(false);
+          handleResetToUpload();
+        }}
+      />
+
+      {/* Footer with simple, easy to understand text */}
+      <footer className="py-6 border-t border-slate-200/80 dark:border-slate-800 bg-white/70 dark:bg-slate-900/70 backdrop-blur-xs text-center text-xs text-slate-500 dark:text-slate-400">
+        <div className="max-w-5xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <span className="font-bold text-slate-800 dark:text-slate-200">QuickShare</span>
+            <span>•</span>
+            <span>Simple, Fast & Free File Sharing</span>
+          </div>
+
+          <div className="flex items-center gap-4 text-xs text-slate-500 dark:text-slate-400">
+            <span className="inline-flex items-center gap-1">
+              <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+              <span>Files Auto-Delete Safely</span>
+            </span>
+            <span className="inline-flex items-center gap-1">
+              <CheckCircle className="w-3.5 h-3.5 text-rose-500" />
+              <span>100% Free to Use</span>
+            </span>
+            <button
+              type="button"
+              onClick={() => {
+                window.history.pushState({}, '', '/admin');
+                setIsAdminRoute(true);
+              }}
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 transition-colors font-semibold cursor-pointer border border-slate-200/80 dark:border-slate-700 shadow-xs"
+              title="Open Private Administrator Control Center"
+            >
+              <Lock className="w-3.5 h-3.5 text-rose-500" />
+              <span>Admin Center</span>
+            </button>
+          </div>
+        </div>
       </footer>
     </div>
   );

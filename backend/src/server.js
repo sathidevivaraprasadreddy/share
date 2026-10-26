@@ -1,9 +1,16 @@
-import app from './app.js';
+import http from 'http';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+dotenv.config({ path: path.resolve(__dirname, '../.env') });
+
+import app from './app.js';
 import { testDbConnection } from './config/db.js';
 import { startCleanupJob } from './services/cleanupService.js';
-
-dotenv.config();
+import { setupSignalingServer } from './services/signalingService.js';
 
 const PORT = Number(process.env.PORT) || 5000;
 
@@ -12,16 +19,21 @@ async function bootstrap() {
   const dbStatus = await testDbConnection();
   if (!dbStatus.connected) {
     console.warn('⚠️ Warning: Database connection check failed:', dbStatus.error);
-    console.warn('Please ensure MySQL is running in XAMPP or verify your DB credentials in .env');
   } else {
-    console.log('✅ Database connected successfully.');
+    console.log(`✅ Database connected successfully (${dbStatus.client || 'ready'}).`);
   }
 
   // Start background expired file cleanup scheduler
   startCleanupJob();
 
-  // Listen on all network interfaces (0.0.0.0) so other devices (e.g. mobile phones on the same Wi-Fi) can access it!
-  const server = app.listen(PORT, '0.0.0.0', () => {
+  // Create combined HTTP and WebSocket Server
+  const server = http.createServer(app);
+
+  // Setup WebRTC signaling service
+  setupSignalingServer(server);
+
+  // Listen on all network interfaces (0.0.0.0)
+  server.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 QuickShare backend running on http://0.0.0.0:${PORT}`);
     console.log(`📁 File uploads stored in: ${process.env.UPLOAD_DIR || './uploads'}`);
   });
@@ -30,7 +42,7 @@ async function bootstrap() {
   const shutdown = () => {
     console.log('Shutting down server gracefully...');
     server.close(() => {
-      console.log('HTTP server closed.');
+      console.log('HTTP and WebSocket server closed.');
       process.exit(0);
     });
   };

@@ -12,6 +12,22 @@ export default defineConfig({
       '/api': {
         target: 'http://localhost:5050',
         changeOrigin: true
+      },
+      '/ws': {
+        target: 'ws://localhost:5050',
+        ws: true
+      }
+    }
+  },
+  build: {
+    chunkSizeWarningLimit: 800,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          vendor: ['react', 'react-dom'],
+          lucide: ['lucide-react'],
+          qrcode: ['qrcode.react']
+        }
       }
     }
   }

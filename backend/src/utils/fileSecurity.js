@@ -1,4 +1,5 @@
 import crypto from 'crypto';
+import fs from 'fs';
 import path from 'path';
 
 /**
@@ -48,6 +49,26 @@ export function generateStoredFilename(originalName) {
   const randomPart = crypto.randomBytes(16).toString('hex');
   const timestamp = Date.now();
   return `${timestamp}_${randomPart}${safeExt}`;
+}
+
+/**
+ * Generate a cryptographically random six-digit transfer code (100000 - 999999)
+ */
+export function generateSixDigitCode() {
+  return crypto.randomInt(100000, 1000000).toString();
+}
+
+/**
+ * Calculate SHA-256 checksum of a file on local filesystem
+ */
+export async function calculateFileHash(filePath) {
+  return new Promise((resolve, reject) => {
+    const hash = crypto.createHash('sha256');
+    const stream = fs.createReadStream(filePath);
+    stream.on('error', (err) => reject(err));
+    stream.on('data', (chunk) => hash.update(chunk));
+    stream.on('end', () => resolve(hash.digest('hex')));
+  });
 }
 
 /**
