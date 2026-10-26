@@ -39,9 +39,11 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }) {
   const [error, setError] = useState(null);
   const [successInfo, setSuccessInfo] = useState(null);
 
-  // Load Google Client ID from storage or env
+  const DEFAULT_GOOGLE_CLIENT_ID = '240216814862-08f8obf8c2jqs7eh9decbvdkrvklimju.apps.googleusercontent.com';
+
+  // Load Google Client ID from storage or env or default
   useEffect(() => {
-    const saved = localStorage.getItem('quickshare_google_client_id') || import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
+    const saved = localStorage.getItem('quickshare_google_client_id') || import.meta.env.VITE_GOOGLE_CLIENT_ID || DEFAULT_GOOGLE_CLIENT_ID;
     if (saved) {
       setCustomGoogleClientId(saved);
     }
@@ -51,7 +53,7 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }) {
   useEffect(() => {
     if (!isOpen) return;
 
-    const activeClientId = customGoogleClientId || import.meta.env.VITE_GOOGLE_CLIENT_ID;
+    const activeClientId = customGoogleClientId || import.meta.env.VITE_GOOGLE_CLIENT_ID || DEFAULT_GOOGLE_CLIENT_ID;
     if (!activeClientId) return;
 
     const checkGsi = setInterval(() => {
@@ -179,7 +181,7 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }) {
           <div className="flex flex-col items-center justify-center min-h-[46px]">
             <div ref={googleBtnContainerRef} id="googleSignInButton" className="w-full flex justify-center">
               {/* Fallback button if Google Client ID is not configured */}
-              {(!customGoogleClientId && !import.meta.env.VITE_GOOGLE_CLIENT_ID) && (
+              {(!customGoogleClientId && !import.meta.env.VITE_GOOGLE_CLIENT_ID && !DEFAULT_GOOGLE_CLIENT_ID) && (
                 <button
                   type="button"
                   onClick={() => setError('Google Sign-In requires VITE_GOOGLE_CLIENT_ID in frontend/.env. Please use the Email & Password form below for instant free access.')}
