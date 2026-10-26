@@ -614,7 +614,7 @@ export async function revokeShareSession(req, res, next) {
     // Update user storage quota if owned
     if (session.user_id) {
       await db.query(
-        `UPDATE users SET storage_used_bytes = MAX(0, storage_used_bytes - ?) WHERE id = ?`,
+        `UPDATE users SET storage_used_bytes = GREATEST(0, storage_used_bytes - ?) WHERE id = ?`,
         [session.total_size_bytes, session.user_id]
       );
 
