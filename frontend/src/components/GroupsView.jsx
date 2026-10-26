@@ -922,24 +922,24 @@ export default function GroupsView({
 
           {/* TAB 1: WHATSAPP-STYLE GROUP CHAT */}
           {groupTab === 'chat' && (
-            <div className="rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden flex flex-col h-[520px] bg-[#efeae2] dark:bg-[#0b141a] shadow-inner relative animate-fade-in">
+            <div className="rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden flex flex-col h-[520px] sm:h-[580px] bg-[#efeae2] dark:bg-[#0b141a] shadow-inner relative animate-fade-in">
               {/* WhatsApp Chat Wallpaper Header */}
-              <div className="px-4 py-2.5 bg-[#f0f2f5] dark:bg-[#202c33] border-b border-slate-200/90 dark:border-slate-800 flex items-center justify-between shrink-0">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-full bg-[#00a884] text-white flex items-center justify-center font-bold text-xs uppercase shadow-xs">
+              <div className="px-3.5 sm:px-4 py-2.5 bg-[#f0f2f5] dark:bg-[#202c33] border-b border-slate-200/90 dark:border-slate-800 flex items-center justify-between shrink-0">
+                <div className="flex items-center gap-2.5 min-w-0 flex-1 pr-2">
+                  <div className="w-8 h-8 rounded-full bg-[#00a884] text-white flex items-center justify-center font-bold text-xs uppercase shadow-xs shrink-0">
                     {groupDetails?.name ? groupDetails.name[0] : 'G'}
                   </div>
-                  <div>
-                    <h4 className="text-xs font-bold text-slate-800 dark:text-slate-100 leading-tight">
+                  <div className="min-w-0 flex-1">
+                    <h4 className="text-xs sm:text-sm font-bold text-slate-800 dark:text-slate-100 leading-tight truncate">
                       {groupDetails?.name}
                     </h4>
-                    <span className="text-[10px] text-slate-500 dark:text-slate-400">
+                    <span className="text-[10px] text-slate-500 dark:text-slate-400 block truncate">
                       {groupDetails?.members?.length || 1} member(s) • Live sync
                     </span>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-1.5">
+                <div className="flex items-center gap-1.5 shrink-0">
                   {(groupDetails?.inviteCode || selectedGroup?.inviteCode) && (
                     <a
                       href={`https://api.whatsapp.com/send?text=${encodeURIComponent(`Join our "${groupDetails?.name || selectedGroup?.name}" group on QuickShare:\n🔗 ${getInviteUrl(groupDetails?.inviteCode || selectedGroup?.inviteCode)}`)}`}

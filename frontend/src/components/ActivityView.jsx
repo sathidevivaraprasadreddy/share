@@ -150,7 +150,7 @@ export default function ActivityView({ user, onRequireAuth }) {
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-3 self-end sm:self-auto">
+                  <div className="flex items-center gap-2 self-start sm:self-auto shrink-0 flex-wrap">
                     {log.recipient && (
                       <span
                         className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold ${

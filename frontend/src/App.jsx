@@ -14,7 +14,7 @@ import ActivityView from './components/ActivityView';
 import AdminControlCenter from './components/AdminControlCenter';
 import { checkHealth, getMe, logoutUser, revokeSession, getInbox } from './services/api';
 import { playNotificationPing } from './utils/audio';
-import { AlertCircle, CheckCircle, ShieldCheck, Upload, WifiOff, X, Lock } from 'lucide-react';
+import { AlertCircle, CheckCircle, ShieldCheck, Upload, WifiOff, X, Lock, Send, Inbox, FolderLock, Users, Activity } from 'lucide-react';
 
 export default function App() {
   const [currentView, setCurrentView] = useState('transfer'); // 'transfer' | 'inbox' | 'my-files' | 'groups' | 'activity'
@@ -389,8 +389,8 @@ export default function App() {
   return (
     <div className={`min-h-screen flex flex-col font-sans transition-colors duration-200 antialiased selection:bg-rose-500 selection:text-white ${
       darkMode
-        ? 'dark bg-slate-950 text-slate-100'
-        : 'bg-gradient-to-b from-slate-50 via-slate-50 to-slate-100 text-slate-900'
+        ? 'dark app-bg-dark text-slate-100'
+        : 'app-bg-light text-slate-900'
     }`}>
       {/* Navigation Header */}
       <Navbar
@@ -477,7 +477,7 @@ export default function App() {
       )}
 
       {/* Main Content Area */}
-      <main className="flex-1 max-w-4xl w-full mx-auto px-4 py-8 sm:py-10 flex flex-col">
+      <main className="flex-1 max-w-5xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-10 pb-28 md:pb-12 flex flex-col">
         {/* Dynamic View Router */}
         {tokenParam ? (
           <DownloadView
@@ -600,7 +600,7 @@ export default function App() {
       />
 
       {/* Footer with simple, easy to understand text */}
-      <footer className="py-6 border-t border-slate-200/80 dark:border-slate-800 bg-white/70 dark:bg-slate-900/70 backdrop-blur-xs text-center text-xs text-slate-500 dark:text-slate-400">
+      <footer className="py-6 border-t border-slate-200/80 dark:border-slate-800 bg-white/70 dark:bg-slate-900/70 backdrop-blur-xs text-center text-xs text-slate-500 dark:text-slate-400 mb-16 md:mb-0">
         <div className="max-w-5xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <span
@@ -626,6 +626,48 @@ export default function App() {
           </div>
         </div>
       </footer>
+
+      {/* Native-Feeling Mobile Bottom Navigation Bar (Docked for Easy Thumb Reach) */}
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-lg border-t border-slate-200/80 dark:border-slate-800 shadow-[0_-4px_20px_rgba(0,0,0,0.06)] px-2 py-1.5 flex items-center justify-around safe-area-bottom">
+        {[
+          { id: 'transfer', label: 'Transfer', icon: Send },
+          { id: 'inbox', label: 'Inbox', icon: Inbox, badge: unreadInboxCount },
+          { id: 'my-files', label: 'My Files', icon: FolderLock },
+          { id: 'groups', label: 'Groups', icon: Users },
+          { id: 'activity', label: 'Activity', icon: Activity }
+        ].map((item) => {
+          const Icon = item.icon;
+          const isActive = currentView === item.id && !tokenParam;
+          return (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => {
+                setTokenParam(null);
+                setCurrentView(item.id);
+              }}
+              className={`flex flex-col items-center justify-center py-1 px-2.5 rounded-xl transition-all relative ${
+                isActive
+                  ? 'text-rose-600 dark:text-rose-400 font-bold scale-105'
+                  : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white font-medium'
+              }`}
+            >
+              <div className="relative">
+                <Icon className={`w-5 h-5 ${isActive ? 'stroke-[2.4]' : 'stroke-[1.8]'}`} />
+                {item.badge > 0 && (
+                  <span className="absolute -top-1 -right-2 px-1 min-w-[14px] h-3.5 rounded-full text-[9px] font-black bg-rose-600 text-white flex items-center justify-center shadow-xs">
+                    {item.badge}
+                  </span>
+                )}
+              </div>
+              <span className="text-[10px] mt-0.5 leading-tight">{item.label}</span>
+              {isActive && (
+                <span className="w-1 h-1 rounded-full bg-rose-600 dark:bg-rose-400 mt-0.5"></span>
+              )}
+            </button>
+          );
+        })}
+      </nav>
     </div>
   );
 }

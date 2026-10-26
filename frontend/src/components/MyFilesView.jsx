@@ -503,7 +503,7 @@ export default function MyFilesView({
       </div>
 
       {/* Filter Categories */}
-      <div className="flex overflow-x-auto pb-1 gap-2">
+      <div className="flex overflow-x-auto pb-1 gap-2 no-scrollbar">
         {[
           { id: 'all', label: 'All Files' },
           { id: 'images', label: 'Images' },
@@ -665,7 +665,7 @@ export default function MyFilesView({
                   </div>
 
                   {/* Actions Bar */}
-                  <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
+                  <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 justify-end w-full sm:w-auto shrink-0 mt-2 sm:mt-0">
                     {category === 'trash' ? (
                       <>
                         <button

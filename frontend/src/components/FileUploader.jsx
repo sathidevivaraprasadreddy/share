@@ -83,12 +83,12 @@ export default function FileUploader({
   return (
     <div className="space-y-2">
       {/* Adjustable Capacity Bar */}
-      <div className="flex flex-wrap items-center justify-between gap-2 px-1">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-1">
         <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-600 dark:text-slate-300">
-          <SlidersHorizontal className="w-3.5 h-3.5 text-rose-500" />
+          <SlidersHorizontal className="w-3.5 h-3.5 text-rose-500 shrink-0" />
           <span>Upload File Size Limit:</span>
         </div>
-        <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-0.5 rounded-xl border border-slate-200/80 dark:border-slate-700">
+        <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-0.5 rounded-xl border border-slate-200/80 dark:border-slate-700 max-w-full overflow-x-auto no-scrollbar shrink-0">
           {SIZE_PRESETS.map((preset) => {
             const isSelected = activeLimit === preset.value;
             return (

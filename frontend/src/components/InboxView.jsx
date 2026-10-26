@@ -486,8 +486,8 @@ export default function InboxView({ user, onRequireAuth }) {
 
                 {/* Bottom Actions for Multi-File */}
                 {item.files.length > 1 && (
-                  <div className="mt-4 flex items-center justify-between pt-3 border-t border-slate-100 dark:border-slate-800">
-                    <span className="text-xs text-slate-400 font-mono">
+                  <div className="mt-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pt-3 border-t border-slate-100 dark:border-slate-800">
+                    <span className="text-xs text-slate-400 font-mono text-center sm:text-left">
                       Total: {item.fileCount} files ({formatBytes(item.totalSizeBytes)})
                     </span>
                     <a
@@ -499,7 +499,7 @@ export default function InboxView({ user, onRequireAuth }) {
                           )
                         );
                       }}
-                      className="py-1.5 px-4 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-xl transition-all flex items-center gap-1.5 shadow-sm"
+                      className="py-2 sm:py-1.5 px-4 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 shadow-sm w-full sm:w-auto"
                     >
                       <Download className="w-3.5 h-3.5" />
                       Download All as ZIP

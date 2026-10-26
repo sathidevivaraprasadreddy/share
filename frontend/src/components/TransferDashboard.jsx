@@ -420,18 +420,22 @@ export default function TransferDashboard({
       {activeTab === 'send' && (
         <div className="space-y-6">
           {/* Intro header */}
-          <div className="text-center space-y-2">
+          <div className="text-center space-y-2.5">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-rose-50 dark:bg-rose-950/50 border border-rose-200/80 dark:border-rose-900/60 text-rose-700 dark:text-rose-300 text-[11px] font-bold shadow-2xs">
+              <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse"></span>
+              <span>100% Free • High Speed • Encrypted</span>
+            </div>
             <h1
-              className="text-3xl sm:text-4xl font-black tracking-tight"
+              className="text-3xl sm:text-5xl font-black tracking-tight"
               style={{ color: darkMode ? '#ffffff' : '#090d16' }}
             >
-              Share anything, <span style={{ color: '#e11d48' }}>instantly.</span>
+              Share anything, <span className="bg-gradient-to-r from-rose-600 to-rose-500 bg-clip-text text-transparent">instantly.</span>
             </h1>
             <p
-              className="text-xs sm:text-sm font-semibold max-w-md mx-auto"
-              style={{ color: darkMode ? '#94a3b8' : '#334155' }}
+              className="text-xs sm:text-sm font-semibold max-w-lg mx-auto"
+              style={{ color: darkMode ? '#94a3b8' : '#475569' }}
             >
-              Send via 6-digit code, instant links, or directly to an inbox.
+              Transfer securely with 6-digit codes, encrypted links, or straight into a recipient's inbox.
             </p>
           </div>
 
