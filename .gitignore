@@ -46,3 +46,8 @@ uploads/
 *.db
 backend/database/*.sqlite
 backend/database/*.sqlite-journal
+
+# Presentation Generator Assets
+ppt_assets/
+build_presentation.py
+create_showcase_images.py
