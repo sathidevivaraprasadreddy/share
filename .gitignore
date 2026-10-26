@@ -51,3 +51,6 @@ backend/database/*.sqlite-journal
 ppt_assets/
 build_presentation.py
 create_showcase_images.py
+build_clean_presentation.py
+capture_real_screenshots.js
+real_shot_transfer.png
