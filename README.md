@@ -16,7 +16,6 @@
 - **API Health Check:** [https://share-api-0xvn.onrender.com/api/health](https://share-api-0xvn.onrender.com/api/health)
 - **Cloud Database:** TiDB Serverless (5 GB free forever, MySQL 8 compatible)
 - **Cloud Object Storage:** Supabase S3 Object Storage (`quickshare-files`)
-- **Admin Control Center:** Accessible via `/admin`, `/control-center`, or user profile & footer menu
 - **GitHub Repository:** [https://github.com/sathidevivaraprasadreddy/share](https://github.com/sathidevivaraprasadreddy/share)
 
 ---
@@ -78,7 +77,7 @@ QuickShare Navigation
 ├── 📥 Recipient Inbox (Directly received files with WhatsApp checkmarks, notes & rename)
 ├── 📁 My Files (Cloud drive, category filters, inline rename, trash bin & restore)
 ├── 👥 Collaboration Groups (WhatsApp-style group chat, emojis, attachments, rename & files tab)
-├── 🛡️ Admin Control Center (/admin or /control-center - MFA, user moderation, audit logs & CSV export)
+├── 🛡️ Admin Control Center (MFA protected, user moderation, audit logs & CSV export)
 ├── ⏱️ Activity Timeline (Audit logs for uploads, downloads, and revocations)
 ├── 🔔 Notifications (Live transfer alerts, audio chimes & unread badge)
 └── ⚙️ Profile & Quota (Avatar color picker, storage meter, password change, Danger Zone)
@@ -101,7 +100,7 @@ QuickShare Navigation
   - **Cellular SMS OTP:** Supports real SMS delivery to mobile phones via Fast2SMS and Twilio.
   - **Standard Email & Password:** Bcrypt hashed credentials with salted rounds.
 
-- **🛡️ Admin Control Center (`/admin` or `/control-center`):**
+- **🛡️ Private Administrator Control Center (Hidden Operator Console):**
   - Multi-Factor Authentication (MFA PIN) protected.
   - Real-time user management (suspend, session revoke, password reset).
   - Group and chat moderation (view all messages, delete inappropriate content).

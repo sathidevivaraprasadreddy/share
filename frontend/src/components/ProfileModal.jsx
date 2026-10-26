@@ -104,7 +104,7 @@ export default function ProfileModal({ isOpen, onClose, user, onUpdateUser, onLo
           <div>
             <div className="flex items-center gap-2">
               <h2 className="text-xl font-bold text-slate-900 dark:text-white">{displayName || user.username}</h2>
-              {(user.isAdmin || user.is_admin) && (
+              {(user.isAdmin || user.is_admin || user.role === 'admin' || user.username?.toLowerCase() === 'admin') && (
                 <span className="px-2 py-0.5 text-[10px] font-bold uppercase rounded bg-rose-100 text-rose-700 dark:bg-rose-950/80 dark:text-rose-300 border border-rose-300 dark:border-rose-800">
                   ADMIN
                 </span>
@@ -112,7 +112,7 @@ export default function ProfileModal({ isOpen, onClose, user, onUpdateUser, onLo
             </div>
             <p className="text-xs text-slate-500 dark:text-slate-400 font-mono">@{user.username}</p>
             <p className="text-xs text-slate-400 mt-0.5">{user.email}</p>
-            {(user.isAdmin || user.is_admin) && onOpenAdmin && (
+            {(user.isAdmin || user.is_admin || user.role === 'admin' || user.username?.toLowerCase() === 'admin') && onOpenAdmin && (
               <button
                 type="button"
                 onClick={onOpenAdmin}

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Navbar from './components/Navbar';
 import TransferDashboard from './components/TransferDashboard';
 import ShareResult from './components/ShareResult';
@@ -89,6 +89,40 @@ export default function App() {
       window.removeEventListener('hashchange', handlePopState);
     };
   }, []);
+
+  // Secret admin hotkey: Ctrl + Shift + A or Alt + Shift + A
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if ((e.ctrlKey || e.altKey) && e.shiftKey && (e.key === 'A' || e.key === 'a')) {
+        e.preventDefault();
+        window.history.pushState({}, '', '/admin');
+        setIsAdminRoute(true);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  // Secret triple-click / Alt+click on footer brand to open admin
+  const adminClickCountRef = useRef(0);
+  const adminClickTimerRef = useRef(null);
+  const handleSecretAdminTrigger = (e) => {
+    if (e.altKey) {
+      window.history.pushState({}, '', '/admin');
+      setIsAdminRoute(true);
+      return;
+    }
+    adminClickCountRef.current += 1;
+    if (adminClickTimerRef.current) clearTimeout(adminClickTimerRef.current);
+    adminClickTimerRef.current = setTimeout(() => {
+      adminClickCountRef.current = 0;
+    }, 600);
+    if (adminClickCountRef.current >= 3) {
+      adminClickCountRef.current = 0;
+      window.history.pushState({}, '', '/admin');
+      setIsAdminRoute(true);
+    }
+  };
 
   // Modals
   const [authModalOpen, setAuthModalOpen] = useState(false);
@@ -569,7 +603,13 @@ export default function App() {
       <footer className="py-6 border-t border-slate-200/80 dark:border-slate-800 bg-white/70 dark:bg-slate-900/70 backdrop-blur-xs text-center text-xs text-slate-500 dark:text-slate-400">
         <div className="max-w-5xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-3">
           <div className="flex items-center gap-2">
-            <span className="font-bold text-slate-800 dark:text-slate-200">QuickShare</span>
+            <span
+              onClick={handleSecretAdminTrigger}
+              className="font-bold text-slate-800 dark:text-slate-200 cursor-default select-none"
+              title=""
+            >
+              QuickShare
+            </span>
             <span>•</span>
             <span>Simple, Fast & Free File Sharing</span>
           </div>
@@ -583,18 +623,6 @@ export default function App() {
               <CheckCircle className="w-3.5 h-3.5 text-rose-500" />
               <span>100% Free to Use</span>
             </span>
-            <button
-              type="button"
-              onClick={() => {
-                window.history.pushState({}, '', '/admin');
-                setIsAdminRoute(true);
-              }}
-              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 transition-colors font-semibold cursor-pointer border border-slate-200/80 dark:border-slate-700 shadow-xs"
-              title="Open Private Administrator Control Center"
-            >
-              <Lock className="w-3.5 h-3.5 text-rose-500" />
-              <span>Admin Center</span>
-            </button>
           </div>
         </div>
       </footer>

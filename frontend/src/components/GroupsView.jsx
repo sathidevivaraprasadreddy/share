@@ -388,7 +388,7 @@ export default function GroupsView({
     return () => clearInterval(interval);
   }, [selectedGroup?.id]);
 
-  // Scroll logic: only auto-scroll to bottom if user is near bottom, switched tab/group, or sent a message
+  // Scroll logic: NO automatic background scroll; only scroll on group/tab switch or user-sent messages
   useEffect(() => {
     if (groupTab !== 'chat' || messages.length === 0) return;
 
@@ -397,12 +397,14 @@ export default function GroupsView({
     prevGroupIdRef.current = selectedGroup?.id;
     prevTabRef.current = groupTab;
 
+    // Initial open or switching groups/tabs: scroll to bottom once
     if (groupChanged || tabChanged) {
       scrollToBottom(false);
       prevMessagesLengthRef.current = messages.length;
       return;
     }
 
+    // When the user themselves sends a message or file
     if (userJustSentMsgRef.current) {
       userJustSentMsgRef.current = false;
       scrollToBottom(true);
@@ -410,14 +412,12 @@ export default function GroupsView({
       return;
     }
 
-    if (isNearBottomRef.current) {
-      scrollToBottom(true);
-    } else {
-      // User is scrolled up reading chat history: do NOT disrupt their scroll!
-      if (messages.length > prevMessagesLengthRef.current) {
-        const diff = messages.length - prevMessagesLengthRef.current;
-        setUnreadBelowCount((c) => c + diff);
-      }
+    // Do NOT auto-scroll on incoming polling messages.
+    // If new messages arrived while user is in chat, update unread indicator for the "Latest" button
+    if (messages.length > prevMessagesLengthRef.current) {
+      const diff = messages.length - prevMessagesLengthRef.current;
+      setUnreadBelowCount((c) => c + diff);
+      setShowScrollBottom(true);
     }
 
     prevMessagesLengthRef.current = messages.length;
@@ -1224,24 +1224,24 @@ export default function GroupsView({
 
               <form
                 onSubmit={handleSendMessage}
-                className="p-2 sm:p-2.5 bg-[#f0f2f5] dark:bg-[#202c33] border-t border-slate-200/90 dark:border-slate-800 flex items-center gap-1.5 sm:gap-2 shrink-0"
+                className="p-1.5 sm:p-2 bg-[#f0f2f5] dark:bg-[#202c33] border-t border-slate-200/90 dark:border-slate-800 flex items-center gap-1 sm:gap-1.5 shrink-0 w-full max-w-full box-border"
               >
                 <button
                   type="button"
                   onClick={() => setShowEmojiPicker((prev) => !prev)}
-                  className="p-2 text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-200/70 dark:hover:bg-slate-700 rounded-full transition-colors"
+                  className="p-1.5 sm:p-2 text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-200/70 dark:hover:bg-slate-700 rounded-full transition-colors shrink-0"
                   title="Insert emoji"
                 >
-                  <Smile className="w-5 h-5" />
+                  <Smile className="w-4 h-4 sm:w-5 sm:h-5" />
                 </button>
 
                 <button
                   type="button"
                   onClick={() => groupFileInputRef.current?.click()}
-                  className="relative p-2 text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-200/70 dark:hover:bg-slate-700 rounded-full transition-colors"
+                  className="relative p-1.5 sm:p-2 text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-200/70 dark:hover:bg-slate-700 rounded-full transition-colors shrink-0"
                   title="Attach & share files to group"
                 >
-                  <Paperclip className="w-5 h-5" />
+                  <Paperclip className="w-4 h-4 sm:w-5 sm:h-5" />
                   {stagedChatFiles.length > 0 && (
                     <span className="absolute -top-1 -right-1 w-4 h-4 bg-[#00a884] text-white text-[10px] font-bold rounded-full flex items-center justify-center animate-scale-in">
                       {stagedChatFiles.length}
@@ -1261,22 +1261,22 @@ export default function GroupsView({
                   }}
                   placeholder={
                     stagedChatFiles.length > 0
-                      ? `Add a caption with ${stagedChatFiles.length} file(s) or press Enter to send...`
+                      ? `Add caption (${stagedChatFiles.length})...`
                       : 'Type a message...'
                   }
-                  className="flex-1 bg-white dark:bg-[#2a3942] text-slate-800 dark:text-slate-100 placeholder-slate-400 text-xs sm:text-sm px-4 py-2.5 rounded-full border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-[#00a884]/30"
+                  className="min-w-0 flex-1 bg-white dark:bg-[#2a3942] text-slate-800 dark:text-slate-100 placeholder-slate-400 text-xs sm:text-sm px-3 sm:px-4 py-2 sm:py-2.5 rounded-full border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-[#00a884]/30"
                 />
 
                 <button
                   type="submit"
                   disabled={groupUploading || (!chatInput.trim() && stagedChatFiles.length === 0)}
-                  className="w-10 h-10 rounded-full bg-[#00a884] hover:bg-[#008f6f] disabled:opacity-40 text-white flex items-center justify-center shadow-md active:scale-95 transition-all shrink-0"
+                  className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-[#00a884] hover:bg-[#008f6f] disabled:opacity-40 text-white flex items-center justify-center shadow-md active:scale-95 transition-all shrink-0"
                   title={stagedChatFiles.length > 0 ? "Send renamed file(s) to group" : "Send message"}
                 >
                   {groupUploading ? (
                     <Loader2 className="w-4 h-4 animate-spin" />
                   ) : (
-                    <Send className="w-4 h-4 ml-0.5" />
+                    <Send className="w-3.5 h-3.5 sm:w-4 sm:h-4 ml-0.5" />
                   )}
                 </button>
               </form>
