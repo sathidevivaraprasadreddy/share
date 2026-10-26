@@ -1,6 +1,6 @@
 # QuickShare 🚀
 > **Modern, 100% Free & Open-Source Ephemeral File-Sharing Platform**  
-> 6-digit transfer codes, cryptographic share links, in-app recipient inboxes, WhatsApp-style collaboration groups with real-time chat, admin moderation control center, PWA mobile installability, and zero-cost cloud deployment.
+> 6-digit transfer codes, cryptographic share links, in-app recipient inboxes, WhatsApp-style collaboration groups with real-time chat, personal cloud drive, PWA mobile installability, and zero-cost cloud deployment.
 
 ![QuickShare Banner](https://img.shields.io/badge/Status-Production%20Ready-emerald)
 ![Free Stack](https://img.shields.io/badge/Cost-%E2%82%B90%20Zero%20Paid%20Tiers-rose)
@@ -77,7 +77,6 @@ QuickShare Navigation
 ├── 📥 Recipient Inbox (Directly received files with WhatsApp checkmarks, notes & rename)
 ├── 📁 My Files (Cloud drive, category filters, inline rename, trash bin & restore)
 ├── 👥 Collaboration Groups (WhatsApp-style group chat, emojis, attachments, rename & files tab)
-├── 🛡️ Admin Control Center (MFA protected, user moderation, audit logs & CSV export)
 ├── ⏱️ Activity Timeline (Audit logs for uploads, downloads, and revocations)
 ├── 🔔 Notifications (Live transfer alerts, audio chimes & unread badge)
 └── ⚙️ Profile & Quota (Avatar color picker, storage meter, password change, Danger Zone)
@@ -99,13 +98,6 @@ QuickShare Navigation
   - **Email OTP (100% Free):** 6-digit one-time codes dispatched directly via SMTP / Nodemailer.
   - **Cellular SMS OTP:** Supports real SMS delivery to mobile phones via Fast2SMS and Twilio.
   - **Standard Email & Password:** Bcrypt hashed credentials with salted rounds.
-
-- **🛡️ Private Administrator Control Center (Hidden Operator Console):**
-  - Multi-Factor Authentication (MFA PIN) protected.
-  - Real-time user management (suspend, session revoke, password reset).
-  - Group and chat moderation (view all messages, delete inappropriate content).
-  - Tamper-resistant security logs parsing client IPs, devices (Android, iOS, Windows, Mac), and browsers.
-  - One-click CSV export of all database tables.
 
 ---
 

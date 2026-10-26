@@ -33,7 +33,6 @@ S3_BUCKET_NAME=quickshare-files
 
 # Security & Sessions
 JWT_SECRET=your_super_secret_jwt_key_here
-ADMIN_PIN=123456
 
 # Upload Configuration
 MAX_FILE_SIZE_MB=50
@@ -92,10 +91,3 @@ npm run dev
   - `POST /api/files/:id/trash` - Move file to trash bin
   - `POST /api/files/:id/restore` - Restore file from trash
   - `DELETE /api/files/:id/purge` - Permanently purge file
-- **Admin Control Center:**
-  - `POST /api/admin/login` - Admin login with MFA PIN verification
-  - `GET /api/admin/overview` - Platform analytics, active users, storage metrics
-  - `GET /api/admin/users` - Manage registered users (suspend, revoke, reset password)
-  - `GET /api/admin/messages` - Moderate all group chat messages
-  - `GET /api/admin/logs` - Security audit logs with client IP and device telemetry
-  - `GET /api/admin/export/:table` - One-click CSV export of database tables
