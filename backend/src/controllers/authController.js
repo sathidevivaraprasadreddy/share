@@ -2,16 +2,12 @@ import bcrypt from 'bcryptjs';
 import { getDbPool } from '../config/db.js';
 import { signUserToken } from '../middleware/authMiddleware.js';
 import storageService from '../services/storageService.js';
-import { sendSmsOtp } from '../services/smsService.js';
 import { sendEmailOtp as dispatchEmailOtp } from '../services/emailService.js';
 import { recordLoginAttempt } from './adminController.js';
 
 const AVATAR_COLORS = [
   '#e11d48', '#2563eb', '#7c3aed', '#059669', '#d97706', '#0891b2', '#db2777'
 ];
-
-// In-memory store for phone verification OTPs
-const phoneOtpStore = new Map();
 
 // In-memory store for email verification OTPs
 const emailOtpStore = new Map();
@@ -318,177 +314,6 @@ export async function changePassword(req, res, next) {
     return res.json({
       success: true,
       message: 'Password changed successfully.'
-    });
-  } catch (err) {
-    next(err);
-  }
-}
-
-/**
- * Send Phone Verification OTP
- */
-export async function sendPhoneOtp(req, res, next) {
-  try {
-    const { phone } = req.body;
-    if (!phone || typeof phone !== 'string') {
-      return res.status(400).json({ success: false, error: 'Phone number is required.' });
-    }
-
-    const cleanPhone = phone.replace(/[^0-9+]/g, '').trim();
-    const digitsOnly = cleanPhone.replace(/[^0-9]/g, '');
-    if (digitsOnly.length < 7 || digitsOnly.length > 15) {
-      return res.status(400).json({
-        success: false,
-        error: 'Please enter a valid phone number (7-15 digits).'
-      });
-    }
-
-    // Rate-limit check (e.g., minimum 20s between resend)
-    const existing = phoneOtpStore.get(cleanPhone);
-    if (existing && existing.createdAt && (Date.now() - existing.createdAt) < 20000) {
-      return res.status(429).json({
-        success: false,
-        error: 'Please wait 20 seconds before requesting another OTP.'
-      });
-    }
-
-    // Generate 6-digit cryptographic OTP
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    const expiresAt = Date.now() + 5 * 60 * 1000; // 5 min
-
-    phoneOtpStore.set(cleanPhone, {
-      otp,
-      expiresAt,
-      attempts: 0,
-      createdAt: Date.now()
-    });
-
-    // Dispatch SMS via provider (Fast2SMS / Twilio) or secure server log
-    await sendSmsOtp(cleanPhone, otp);
-
-    const resPayload = {
-      success: true,
-      message: `Verification code sent to ${cleanPhone}. Please check your phone.`
-    };
-    if (process.env.NODE_ENV === 'test') {
-      resPayload.devOtp = otp;
-    }
-
-    return res.json(resPayload);
-  } catch (err) {
-    next(err);
-  }
-}
-
-/**
- * Verify Phone OTP and Register/Login
- */
-export async function verifyPhoneOtp(req, res, next) {
-  try {
-    const { phone, otp, displayName } = req.body;
-    if (!phone || !otp) {
-      return res.status(400).json({ success: false, error: 'Phone number and OTP code are required.' });
-    }
-
-    const cleanPhone = phone.replace(/[^0-9+]/g, '').trim();
-    const cleanOtp = otp.toString().trim();
-
-    const record = phoneOtpStore.get(cleanPhone);
-    if (!record) {
-      return res.status(400).json({
-        success: false,
-        error: 'No OTP request found for this phone number. Please request an OTP first.'
-      });
-    }
-
-    if (Date.now() > record.expiresAt) {
-      phoneOtpStore.delete(cleanPhone);
-      return res.status(400).json({
-        success: false,
-        error: 'OTP has expired. Please request a new one.'
-      });
-    }
-
-    if (record.attempts >= 5) {
-      phoneOtpStore.delete(cleanPhone);
-      return res.status(429).json({
-        success: false,
-        error: 'Too many incorrect attempts. Please request a new OTP.'
-      });
-    }
-
-    if (record.otp !== cleanOtp) {
-      record.attempts += 1;
-      return res.status(400).json({
-        success: false,
-        error: 'Invalid OTP code. Please check and try again.'
-      });
-    }
-
-    // OTP Verified! Remove from memory
-    phoneOtpStore.delete(cleanPhone);
-
-    const db = getDbPool();
-    // Check if user exists by phone
-    const [existingUsers] = await db.query(
-      `SELECT * FROM users WHERE phone = ?`,
-      [cleanPhone]
-    );
-
-    let user;
-    if (existingUsers.length > 0) {
-      const u = existingUsers[0];
-      user = {
-        id: u.id,
-        username: u.username,
-        email: u.email,
-        phone: u.phone,
-        displayName: u.display_name,
-        avatarColor: u.avatar_color,
-        storageQuotaBytes: u.storage_quota_bytes,
-        storageUsedBytes: u.storage_used_bytes,
-        createdAt: u.created_at
-      };
-    } else {
-      // Auto-register new phone user
-      const phoneDigits = cleanPhone.replace(/[^0-9]/g, '');
-      const baseUsername = `user_${phoneDigits.slice(-6)}`;
-      let finalUsername = baseUsername;
-
-      const [userConflict] = await db.query(`SELECT id FROM users WHERE username = ?`, [finalUsername]);
-      if (userConflict.length > 0) {
-        finalUsername = `${baseUsername}_${Math.floor(100 + Math.random() * 900)}`;
-      }
-
-      const name = displayName?.trim() || `User ${phoneDigits.slice(-4)}`;
-      const avatarColor = AVATAR_COLORS[Math.floor(Math.random() * AVATAR_COLORS.length)];
-      const placeholderEmail = `${finalUsername}@phone.quickshare.local`;
-
-      const [insertResult] = await db.query(
-        `INSERT INTO users (username, email, phone, password_hash, display_name, avatar_color)
-         VALUES (?, ?, ?, ?, ?, ?)`,
-        [finalUsername, placeholderEmail, cleanPhone, 'PHONE_OTP_VERIFIED', name, avatarColor]
-      );
-
-      user = {
-        id: insertResult.insertId,
-        username: finalUsername,
-        email: placeholderEmail,
-        phone: cleanPhone,
-        displayName: name,
-        avatarColor,
-        storageQuotaBytes: 1073741824,
-        storageUsedBytes: 0,
-        createdAt: new Date().toISOString()
-      };
-    }
-
-    const token = signUserToken(user);
-    return res.json({
-      success: true,
-      message: 'Phone verified successfully.',
-      token,
-      user
     });
   } catch (err) {
     next(err);

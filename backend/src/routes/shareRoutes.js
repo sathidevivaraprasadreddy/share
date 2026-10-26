@@ -13,8 +13,6 @@ import {
   updateProfile,
   changePassword,
   loginWithGoogle,
-  sendPhoneOtp,
-  verifyPhoneOtp,
   sendEmailOtp,
   verifyEmailOtp,
   deleteAccount,
@@ -89,8 +87,6 @@ router.get('/health', async (req, res) => {
 router.post('/auth/register', register);
 router.post('/auth/login', login);
 router.post('/auth/google', loginWithGoogle);
-router.post('/auth/otp/send', sendPhoneOtp);
-router.post('/auth/otp/verify', verifyPhoneOtp);
 router.post('/auth/email-otp/send', sendEmailOtp);
 router.post('/auth/email-otp/verify', verifyEmailOtp);
 router.delete('/auth/account', authenticateRequired, deleteAccount);

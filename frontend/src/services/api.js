@@ -64,19 +64,6 @@ export async function changeUserPassword(currentPassword, newPassword) {
   return response.data;
 }
 
-export async function sendPhoneOtp(phone) {
-  const response = await api.post('/auth/otp/send', { phone });
-  return response.data;
-}
-
-export async function verifyPhoneOtp(phone, otp, displayName) {
-  const response = await api.post('/auth/otp/verify', { phone, otp, displayName });
-  if (response.data.token) {
-    localStorage.setItem('quickshare_token', response.data.token);
-  }
-  return response.data;
-}
-
 export async function sendEmailOtp(email) {
   const response = await api.post('/auth/email-otp/send', { email });
   return response.data;
@@ -395,8 +382,6 @@ export default {
   getMe,
   updateUserProfile,
   changeUserPassword,
-  sendPhoneOtp,
-  verifyPhoneOtp,
   loginWithGoogle,
   deleteAccount,
   uploadFiles,

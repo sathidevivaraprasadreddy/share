@@ -493,44 +493,10 @@ describe('QuickShare Full Platform Advanced Test Suite', () => {
     });
   });
 
-  describe('9. Phone Number + OTP, Google Sign-In & Deletion Features', () => {
-    let phoneOtp = '';
-    let phoneUserToken = '';
+  describe('9. Email Verification OTP, Google Sign-In & Deletion Features', () => {
+    let emailUserToken = '';
     let googleUserToken = '';
     let testGroupToDeleteId = null;
-
-    it('should send phone OTP successfully', async () => {
-      const res = await request(app)
-        .post('/api/auth/otp/send')
-        .send({ phone: '+91 9876543210' });
-
-      expect(res.status).toBe(200);
-      expect(res.body.success).toBe(true);
-      expect(res.body.devOtp).toBeDefined();
-      expect(res.body.devOtp.length).toBe(6);
-      phoneOtp = res.body.devOtp;
-    });
-
-    it('should reject invalid phone OTP', async () => {
-      const res = await request(app)
-        .post('/api/auth/otp/verify')
-        .send({ phone: '+91 9876543210', otp: '000000' });
-
-      expect(res.status).toBe(400);
-      expect(res.body.success).toBe(false);
-    });
-
-    it('should verify correct phone OTP and register new user', async () => {
-      const res = await request(app)
-        .post('/api/auth/otp/verify')
-        .send({ phone: '+91 9876543210', otp: phoneOtp, displayName: 'Phone User' });
-
-      expect(res.status).toBe(200);
-      expect(res.body.success).toBe(true);
-      expect(res.body.token).toBeDefined();
-      expect(res.body.user.phone).toBe('+919876543210');
-      phoneUserToken = res.body.token;
-    });
 
     it('should send email OTP and verify successfully', async () => {
       // 1. Send OTP
@@ -555,6 +521,7 @@ describe('QuickShare Full Platform Advanced Test Suite', () => {
       expect(verifyRes.status).toBe(200);
       expect(verifyRes.body.token).toBeDefined();
       expect(verifyRes.body.user.email).toBe('student_nbkr@gmail.com');
+      emailUserToken = verifyRes.body.token;
     });
 
     it('should sign in or register with Google credentials', async () => {
@@ -577,7 +544,7 @@ describe('QuickShare Full Platform Advanced Test Suite', () => {
       // 1. Create group
       const createRes = await request(app)
         .post('/api/groups')
-        .set('Authorization', `Bearer ${phoneUserToken}`)
+        .set('Authorization', `Bearer ${emailUserToken}`)
         .send({ name: 'Temporary Delete Group', description: 'Testing deletion' });
 
       expect(createRes.status).toBe(201);
@@ -592,14 +559,14 @@ describe('QuickShare Full Platform Advanced Test Suite', () => {
       // 3. Owner deletes successfully (200)
       const deleteRes = await request(app)
         .delete(`/api/groups/${testGroupToDeleteId}`)
-        .set('Authorization', `Bearer ${phoneUserToken}`);
+        .set('Authorization', `Bearer ${emailUserToken}`);
       expect(deleteRes.status).toBe(200);
       expect(deleteRes.body.success).toBe(true);
 
       // 4. Group details now returns 404
       const checkRes = await request(app)
         .get(`/api/groups/${testGroupToDeleteId}`)
-        .set('Authorization', `Bearer ${phoneUserToken}`);
+        .set('Authorization', `Bearer ${emailUserToken}`);
       expect(checkRes.status).toBe(404);
     });
 
@@ -607,14 +574,14 @@ describe('QuickShare Full Platform Advanced Test Suite', () => {
       // Reject without confirmation keyword
       const badConfirm = await request(app)
         .delete('/api/auth/account')
-        .set('Authorization', `Bearer ${phoneUserToken}`)
+        .set('Authorization', `Bearer ${emailUserToken}`)
         .send({ confirmation: 'NO' });
       expect(badConfirm.status).toBe(400);
 
       // Delete with confirmation: 'DELETE'
       const deleteRes = await request(app)
         .delete('/api/auth/account')
-        .set('Authorization', `Bearer ${phoneUserToken}`)
+        .set('Authorization', `Bearer ${emailUserToken}`)
         .send({ confirmation: 'DELETE' });
 
       expect(deleteRes.status).toBe(200);
@@ -623,7 +590,7 @@ describe('QuickShare Full Platform Advanced Test Suite', () => {
       // Subsequent access returns 401
       const meRes = await request(app)
         .get('/api/auth/me')
-        .set('Authorization', `Bearer ${phoneUserToken}`);
+        .set('Authorization', `Bearer ${emailUserToken}`);
       expect(meRes.status).toBe(401);
     });
   });
