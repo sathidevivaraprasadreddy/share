@@ -1,12 +1,12 @@
 # QuickShare 🚀
 > **Modern, 100% Free & Open-Source Ephemeral File-Sharing Platform**  
-> 6-digit transfer codes, cryptographic share links, in-app recipient inboxes, WhatsApp-style collaboration groups with real-time chat, personal cloud drive, PWA mobile installability, and zero-cost cloud deployment.
+> 6-digit transfer codes, cryptographic share links, in-app recipient inboxes, WhatsApp-style collaboration groups with real-time chat, personal cloud drive, responsive desktop & mobile experience, and zero-cost cloud deployment.
 
 ![QuickShare Banner](https://img.shields.io/badge/Status-Production%20Ready-emerald)
 ![Free Stack](https://img.shields.io/badge/Cost-%E2%82%B90%20Zero%20Paid%20Tiers-rose)
 ![Node Engine](https://img.shields.io/badge/Node.js-v22%2B%20Native%20SQLite%20Ready-blue)
 ![Database](https://img.shields.io/badge/Database-TiDB%20Serverless%20%2F%20SQLite-indigo)
-![Tests](https://img.shields.io/badge/Tests-56%2F56%20Passing-emerald)
+![Tests](https://img.shields.io/badge/Tests-53%2F53%20Passing-emerald)
 
 ---
 
@@ -28,7 +28,7 @@
 5. [₹0 Zero-Cost Cloud Stack](#-0-zero-cost-cloud-stack)
 6. [Zero-Config Local Development](#-zero-config-local-development)
 7. [Production Deployment Guide](#-production-deployment-guide)
-8. [Automated Testing Suite (56/56 Tests)](#-automated-testing-suite)
+8. [Automated Testing Suite (53/53 Tests)](#-automated-testing-suite)
 9. [Security, Privacy & Data Lifecycle](#-security-privacy--data-lifecycle)
 
 ---
@@ -85,18 +85,19 @@ QuickShare Navigation
 - **💬 Real-Time Group Chat & File Sharing:**
   - WhatsApp-style chat bubbles with message timestamps, avatar initials, and delivery checkmarks.
   - Attachment staging drawer allowing senders to preview and **rename files (✏️)** before sending.
-  - **Smart auto-scroll:** Preserves scroll position when reading earlier messages; scrolls down automatically only when at the bottom or sending a message.
-  - **Floating Jump-to-Latest Button:** WhatsApp-style floating pill with unread count indicator when scrolled up.
+  - **Smart auto-scroll:** Preserves scroll position when reading earlier messages; scrolls down automatically only when sending a message or clicking "Latest".
+  - **Floating Jump-to-Latest Button:** Floating pill with unread count indicator when scrolled up.
   - Dedicated **Files Tab** in groups with individual file deletion (🗑️), file rename, and batch ZIP archive download.
   - Active group **QR Code Modal** with live invite code display and 1-click WhatsApp / Copy Link sharing.
 
-- **📱 Installable Progressive Web App (PWA):**
-  - Includes Web App Manifest (`manifest.json`) and vector app icons for installing QuickShare as a native app on Android, iOS Safari, Windows, and macOS.
+- **📱 Responsive Mobile & Desktop Design:**
+  - Native docked bottom navigation bar for easy thumb reach on mobile devices.
+  - Fully responsive layouts with zero horizontal clipping or cut-off buttons.
+  - Ambient radial canvas styling and clean card elevations.
 
 - **🔑 Multi-Option Authentication:**
   - **Google OAuth 2.0 (Google Identity Services):** One-tap Google Sign-In with cryptographic JWT token verification.
   - **Email OTP (100% Free):** 6-digit one-time codes dispatched directly via SMTP / Nodemailer.
-  - **Cellular SMS OTP:** Supports real SMS delivery to mobile phones via Fast2SMS and Twilio.
   - **Standard Email & Password:** Bcrypt hashed credentials with salted rounds.
 
 ---
@@ -104,7 +105,7 @@ QuickShare Navigation
 ## 🏗️ Technology Architecture
 
 ```
-[ Client Browsers & Mobile PWA ]
+[ Client Browsers & Mobile Devices ]
        │
        │ HTTPS / REST API
        ▼
@@ -211,7 +212,7 @@ Open your browser at: **`http://localhost:5180`**
 
 ### Phase 3: Deploy Frontend to Vercel (₹0)
 1. Sign in to [Vercel](https://vercel.com/) and click **Add New** -> **Project**.
-2. Import your GitHub repository (`share` or `quickshare`) and configure:
+2. Import your GitHub repository (`share`) and configure:
    - **Root Directory:** `frontend`
    - **Framework Preset:** `Vite`
    - **Build Command:** `npm run build`
@@ -231,7 +232,7 @@ QuickShare includes a rigorous automated test suite powered by Jest and Supertes
 npm --prefix backend test
 ```
 
-### Verified Test Coverage (56/56 Passing - 100%):
+### Verified Test Coverage (53/53 Passing - 100%):
 - **User Authentication:** Registration, duplicate checks, bcrypt verification, JWT signing, profile updates, and password changes.
 - **Share Sessions & Uploads:** Single/multi-file uploads, mime-type sanitization, SHA-256 hash calculation, quota verification.
 - **6-Digit Codes & Direct Transfer:** Code lookup, rate-limiting lockout verification, direct delivery into recipient inboxes.

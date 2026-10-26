@@ -10,13 +10,13 @@ Node.js (ES Modules) + Express REST API service for secure, ephemeral file shari
   - Local / Tests: Built-in Node.js Native SQLite (`node:sqlite`)
 - **Storage Driver:** S3-Compatible Cloud Storage (Supabase Object Storage / Cloudflare R2) or Local Filesystem
 - **Security:** Helmet, Express Rate Limiter, Bcrypt, Cryptographic Token Generator, JWT
-- **Email & SMS Dispatch:** Nodemailer (SMTP) & Fast2SMS / Twilio
+- **Email Dispatch:** Nodemailer (SMTP)
 - **Scheduler:** Node-cron (automatic expired file deletion)
-- **Testing:** Jest + Supertest (56 passing automated tests)
+- **Testing:** Jest + Supertest (53 passing automated tests)
 
 ## Environment Variables (.env)
 ```env
-PORT=5000
+PORT=5050
 NODE_ENV=development
 FRONTEND_URL=https://quickshare-nbkr.vercel.app
 
@@ -63,17 +63,17 @@ npm run dev
   - `GET /api/download-all/:token` - Download all files bundled in a `.zip` archive
   - `POST /api/revoke` - Revoke link and permanently delete files immediately
 - **6-Digit Quick Codes:**
-  - `GET /api/code/:code` - Resolve transfer session using a 6-digit code
+  - `POST /api/transfer/code-lookup` - Lookup and download files using 6-digit code
 - **Authentication:**
   - `POST /api/auth/register` - Create a new free user account
   - `POST /api/auth/login` - Authenticate with email/username and password
   - `POST /api/auth/google` - Official Google Sign-In with JWT verification
-  - `POST /api/auth/otp/send` - Send 6-digit email or SMS OTP
-  - `POST /api/auth/otp/verify` - Verify OTP and issue session token
+  - `POST /api/auth/email-otp/send` - Send 6-digit email OTP
+  - `POST /api/auth/email-otp/verify` - Verify email OTP and issue session token
   - `GET /api/auth/me` - Current user profile and quota details
 - **Direct Inbox:**
   - `GET /api/inbox` - Retrieve received transfers
-  - `POST /api/inbox/direct-share` - Transfer files directly to a user's inbox
+  - `POST /api/transfer/direct` - Transfer files directly to a user's inbox
   - `PATCH /api/inbox/:id` - Mark as read, pinned, or archived
 - **Collaboration Groups:**
   - `GET /api/groups` - List user's groups
