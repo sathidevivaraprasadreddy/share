@@ -56,7 +56,7 @@ class SqliteAdapter {
         'ALTER TABLE users ADD COLUMN lockout_until DATETIME NULL;',
         'ALTER TABLE users ADD COLUMN admin_mfa_enabled INTEGER NOT NULL DEFAULT 0;',
         'ALTER TABLE users ADD COLUMN admin_mfa_secret TEXT NULL;',
-        'ALTER TABLE groups ADD COLUMN invite_code TEXT NULL;',
+        'ALTER TABLE `groups` ADD COLUMN invite_code TEXT NULL;',
         'ALTER TABLE share_sessions ADD COLUMN ip_address TEXT NULL;',
         'ALTER TABLE share_sessions ADD COLUMN user_agent TEXT NULL;'
       ];
@@ -71,7 +71,7 @@ class SqliteAdapter {
 
       // Backfill missing group invite codes
       try {
-        this.db.exec("UPDATE groups SET invite_code = lower(hex(randomblob(8))) WHERE invite_code IS NULL OR invite_code = '';");
+        this.db.exec("UPDATE `groups` SET invite_code = lower(hex(randomblob(8))) WHERE invite_code IS NULL OR invite_code = '';");
       } catch {}
 
       // Ensure group_messages table exists

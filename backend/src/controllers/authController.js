@@ -845,11 +845,11 @@ export async function deleteAccount(req, res, next) {
       await connection.query(`DELETE FROM share_recipients WHERE recipient_user_id = ?`, [userId]);
 
       // Delete groups owned by user
-      const [ownedGroups] = await connection.query(`SELECT id FROM groups WHERE owner_user_id = ?`, [userId]);
+      const [ownedGroups] = await connection.query(`SELECT id FROM \`groups\` WHERE owner_user_id = ?`, [userId]);
       for (const g of ownedGroups) {
         await connection.query(`DELETE FROM group_shares WHERE group_id = ?`, [g.id]);
         await connection.query(`DELETE FROM group_members WHERE group_id = ?`, [g.id]);
-        await connection.query(`DELETE FROM groups WHERE id = ?`, [g.id]);
+        await connection.query(`DELETE FROM \`groups\` WHERE id = ?`, [g.id]);
       }
 
       await connection.query(`DELETE FROM group_members WHERE user_id = ?`, [userId]);

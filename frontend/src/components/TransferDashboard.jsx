@@ -21,7 +21,6 @@ import {
 } from 'lucide-react';
 import FileUploader from './FileUploader';
 import FileList from './FileList';
-import WebRTCTransfer from './WebRTCTransfer';
 import { formatBytes } from '../utils/format';
 import { playSuccessChime, playNotificationPing } from '../utils/audio';
 import {
@@ -384,8 +383,8 @@ export default function TransferDashboard({
 
   return (
     <div className="space-y-6 animate-fade-in">
-      {/* Top Tabs: Send | Receive | Quick Transfer (P2P) */}
-      <div className="flex p-1.5 bg-slate-200/70 dark:bg-slate-800 rounded-2xl max-w-md mx-auto shadow-inner border border-slate-200/50 dark:border-slate-700">
+      {/* Top Tabs: Send | Receive */}
+      <div className="flex p-1.5 bg-slate-200/70 dark:bg-slate-800 rounded-2xl max-w-sm mx-auto shadow-inner border border-slate-200/50 dark:border-slate-700">
         <button
           onClick={() => {
             setActiveTab('send');
@@ -414,21 +413,6 @@ export default function TransferDashboard({
         >
           <Download className="w-4 h-4 text-indigo-500" />
           <span>Receive</span>
-        </button>
-
-        <button
-          onClick={() => {
-            setActiveTab('p2p');
-            setCodeError(null);
-          }}
-          className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-xs sm:text-sm font-semibold transition-all ${
-            activeTab === 'p2p'
-              ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm'
-              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-          }`}
-        >
-          <Wifi className="w-4 h-4 text-emerald-500" />
-          <span>Quick P2P</span>
         </button>
       </div>
 
@@ -930,16 +914,6 @@ export default function TransferDashboard({
               </button>
             )}
           </div>
-        </div>
-      )}
-
-      {/* TAB 3: QUICK P2P (WEBRTC) */}
-      {activeTab === 'p2p' && (
-        <div className="space-y-4">
-          <WebRTCTransfer
-            onError={(msg) => onError(msg)}
-            onSuccess={(msg) => onSuccess(msg)}
-          />
         </div>
       )}
     </div>

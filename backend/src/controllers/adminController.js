@@ -267,7 +267,7 @@ export async function getAdminOverview(req, res, next) {
     `);
 
     const [groupStats] = await db.query(`
-      SELECT COUNT(*) AS total_groups FROM groups
+      SELECT COUNT(*) AS total_groups FROM \`groups\`
     `);
 
     const [messageStats] = await db.query(`
@@ -882,7 +882,7 @@ export async function getAdminGroupMessages(req, res, next) {
         m.message,
         m.created_at
       FROM group_messages m
-      LEFT JOIN groups g ON m.group_id = g.id
+      LEFT JOIN \`groups\` g ON m.group_id = g.id
       LEFT JOIN users u ON m.user_id = u.id
       WHERE 1=1
     `;
@@ -965,7 +965,7 @@ export async function getAdminGroups(req, res, next) {
         (SELECT COUNT(*) FROM group_members gm WHERE gm.group_id = g.id) AS member_count,
         (SELECT COUNT(*) FROM group_shares gs WHERE gs.group_id = g.id) AS file_count,
         (SELECT COUNT(*) FROM group_messages gm WHERE gm.group_id = g.id) AS message_count
-      FROM groups g
+      FROM \`groups\` g
       LEFT JOIN users u ON g.owner_user_id = u.id
       WHERE 1=1
     `;
@@ -996,7 +996,7 @@ export async function deleteAdminGroup(req, res, next) {
     const groupId = req.params.id;
     const db = getDbPool();
 
-    const [grp] = await db.query(`SELECT id, name FROM groups WHERE id = ?`, [groupId]);
+    const [grp] = await db.query(`SELECT id, name FROM \`groups\` WHERE id = ?`, [groupId]);
     if (!grp || grp.length === 0) {
       return res.status(404).json({ success: false, error: 'Group not found.' });
     }
@@ -1004,7 +1004,7 @@ export async function deleteAdminGroup(req, res, next) {
     await db.query(`DELETE FROM group_messages WHERE group_id = ?`, [groupId]);
     await db.query(`DELETE FROM group_members WHERE group_id = ?`, [groupId]);
     await db.query(`DELETE FROM group_shares WHERE group_id = ?`, [groupId]);
-    await db.query(`DELETE FROM groups WHERE id = ?`, [groupId]);
+    await db.query(`DELETE FROM \`groups\` WHERE id = ?`, [groupId]);
 
     await logAdminAudit(
       req.admin.id,

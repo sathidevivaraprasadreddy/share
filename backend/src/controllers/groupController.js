@@ -13,7 +13,7 @@ export async function getGroups(req, res, next) {
       `SELECT g.id, g.name, g.description, g.invite_code, g.created_at, gm.role,
               (SELECT COUNT(*) FROM group_members WHERE group_id = g.id) AS member_count,
               (SELECT COUNT(*) FROM group_shares WHERE group_id = g.id AND is_revoked = 0) AS active_shares_count
-       FROM groups g
+       FROM \`groups\` g
        JOIN group_members gm ON g.id = gm.group_id
        WHERE gm.user_id = ?
        ORDER BY g.created_at DESC`,
@@ -60,7 +60,7 @@ export async function createGroup(req, res, next) {
 
       // 1. Insert group with invite code
       const [groupResult] = await connection.query(
-        `INSERT INTO groups (owner_user_id, name, description, invite_code) VALUES (?, ?, ?, ?)`,
+        `INSERT INTO \`groups\` (owner_user_id, name, description, invite_code) VALUES (?, ?, ?, ?)`,
         [userId, cleanName, cleanDesc, inviteCode]
       );
 
@@ -107,7 +107,7 @@ export async function getGroupDetails(req, res, next) {
     const db = getDbPool();
 
     const [groups] = await db.query(
-      `SELECT id, name, description, invite_code, owner_user_id, created_at FROM groups WHERE id = ?`,
+      `SELECT id, name, description, invite_code, owner_user_id, created_at FROM \`groups\` WHERE id = ?`,
       [id]
     );
 
@@ -132,7 +132,7 @@ export async function getGroupDetails(req, res, next) {
     if (!inviteCode) {
       inviteCode = crypto.randomBytes(4).toString('hex');
       try {
-        await db.query(`UPDATE groups SET invite_code = ? WHERE id = ?`, [inviteCode, group.id]);
+        await db.query(`UPDATE \`groups\` SET invite_code = ? WHERE id = ?`, [inviteCode, group.id]);
       } catch (e) {}
     }
 
@@ -228,7 +228,7 @@ export async function addMember(req, res, next) {
 
     // Check if requester is owner of group
     const [groupCheck] = await db.query(
-      `SELECT owner_user_id, name FROM groups WHERE id = ?`,
+      `SELECT owner_user_id, name FROM \`groups\` WHERE id = ?`,
       [id]
     );
 
@@ -305,7 +305,7 @@ export async function removeMember(req, res, next) {
     const db = getDbPool();
 
     const [groups] = await db.query(
-      `SELECT owner_user_id FROM groups WHERE id = ?`,
+      `SELECT owner_user_id FROM \`groups\` WHERE id = ?`,
       [id]
     );
 
@@ -399,7 +399,7 @@ export async function deleteGroup(req, res, next) {
     const db = getDbPool();
 
     const [groups] = await db.query(
-      `SELECT owner_user_id, name FROM groups WHERE id = ?`,
+      `SELECT owner_user_id, name FROM \`groups\` WHERE id = ?`,
       [id]
     );
 
@@ -417,7 +417,7 @@ export async function deleteGroup(req, res, next) {
 
       await connection.query(`DELETE FROM group_shares WHERE group_id = ?`, [id]);
       await connection.query(`DELETE FROM group_members WHERE group_id = ?`, [id]);
-      await connection.query(`DELETE FROM groups WHERE id = ?`, [id]);
+      await connection.query(`DELETE FROM \`groups\` WHERE id = ?`, [id]);
 
       await connection.commit();
 
@@ -460,7 +460,7 @@ export async function getGroupByInvite(req, res, next) {
       `SELECT g.id, g.name, g.description, g.invite_code, g.created_at,
               u.username AS owner_username,
               (SELECT COUNT(*) FROM group_members WHERE group_id = g.id) AS member_count
-       FROM groups g
+       FROM \`groups\` g
        JOIN users u ON g.owner_user_id = u.id
        WHERE g.invite_code = ?`,
       [cleanCode]
@@ -521,7 +521,7 @@ export async function joinGroupByInvite(req, res, next) {
     const db = getDbPool();
 
     const [groups] = await db.query(
-      `SELECT id, name, owner_user_id FROM groups WHERE invite_code = ?`,
+      `SELECT id, name, owner_user_id FROM \`groups\` WHERE invite_code = ?`,
       [cleanCode]
     );
 
@@ -689,7 +689,7 @@ export async function deleteGroupMessage(req, res, next) {
     const [rows] = await db.query(
       `SELECT gm.id, gm.user_id, gm.group_id, g.owner_user_id
        FROM group_messages gm
-       JOIN groups g ON gm.group_id = g.id
+       JOIN \`groups\` g ON gm.group_id = g.id
        WHERE gm.id = ? AND gm.group_id = ?`,
       [messageId, groupId]
     );
@@ -732,7 +732,7 @@ export async function deleteGroupFile(req, res, next) {
               g.owner_user_id AS group_owner_id
        FROM share_files sf
        JOIN group_shares gs ON sf.session_id = gs.session_id
-       JOIN groups g ON gs.group_id = g.id
+       JOIN \`groups\` g ON gs.group_id = g.id
        WHERE sf.id = ? AND gs.group_id = ? AND sf.is_deleted = 0`,
       [fileId, groupId]
     );
@@ -788,7 +788,7 @@ export async function deleteGroupShare(req, res, next) {
     const [shareRows] = await db.query(
       `SELECT gs.id, gs.session_id, gs.shared_by_user_id, g.owner_user_id AS group_owner_id
        FROM group_shares gs
-       JOIN groups g ON gs.group_id = g.id
+       JOIN \`groups\` g ON gs.group_id = g.id
        WHERE gs.id = ? AND gs.group_id = ?`,
       [shareId, groupId]
     );

@@ -104,7 +104,7 @@ export async function renameFile(req, res, next) {
       `SELECT sf.id, sf.user_id, sf.session_id, gs.group_id, g.owner_user_id AS group_owner_id
        FROM share_files sf
        LEFT JOIN group_shares gs ON sf.session_id = gs.session_id
-       LEFT JOIN groups g ON gs.group_id = g.id
+       LEFT JOIN \`groups\` g ON gs.group_id = g.id
        WHERE sf.id = ? AND sf.is_deleted = 0`,
       [id]
     );
