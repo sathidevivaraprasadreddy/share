@@ -50,7 +50,8 @@ import {
   Film,
   Music,
   Archive,
-  File
+  File,
+  ChevronDown
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { formatBytes } from '../utils/format';
@@ -104,6 +105,14 @@ export default function GroupsView({
   const [chatInput, setChatInput] = useState('');
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const messagesEndRef = useRef(null);
+  const chatContainerRef = useRef(null);
+  const isNearBottomRef = useRef(true);
+  const [showScrollBottom, setShowScrollBottom] = useState(false);
+  const [unreadBelowCount, setUnreadBelowCount] = useState(0);
+  const prevMessagesLengthRef = useRef(0);
+  const prevGroupIdRef = useRef(null);
+  const prevTabRef = useRef(groupTab);
+  const userJustSentMsgRef = useRef(false);
   const groupFileInputRef = useRef(null);
   const [groupUploading, setGroupUploading] = useState(false);
   const [groupUploadProgress, setGroupUploadProgress] = useState(0);
@@ -211,6 +220,8 @@ export default function GroupsView({
 
       // 3. Post a message to group chat letting members know
       await sendGroupMessage(selectedGroup.id, messageText);
+      userJustSentMsgRef.current = true;
+      isNearBottomRef.current = true;
 
       // 4. Reset staged files & chat input
       setStagedChatFiles([]);
@@ -322,12 +333,45 @@ export default function GroupsView({
     }
   };
 
+  const handleChatScroll = () => {
+    const el = chatContainerRef.current;
+    if (!el) return;
+    const threshold = 100;
+    const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+    const nearBottom = distanceFromBottom <= threshold;
+    isNearBottomRef.current = nearBottom;
+    setShowScrollBottom(!nearBottom);
+    if (nearBottom) {
+      setUnreadBelowCount(0);
+    }
+  };
+
+  const scrollToBottom = (smooth = true) => {
+    isNearBottomRef.current = true;
+    setShowScrollBottom(false);
+    setUnreadBelowCount(0);
+    requestAnimationFrame(() => {
+      messagesEndRef.current?.scrollIntoView({ behavior: smooth ? 'smooth' : 'auto' });
+    });
+  };
+
   const loadGroupMessages = async (groupId, silent = false) => {
     if (!groupId) return;
     try {
       const res = await getGroupMessages(groupId);
       if (res.success) {
-        setMessages(res.messages || []);
+        const incoming = res.messages || [];
+        setMessages((prev) => {
+          // Prevent unnecessary re-render if message list hasn't changed
+          if (
+            prev.length === incoming.length &&
+            prev.length > 0 &&
+            prev[prev.length - 1]?.id === incoming[incoming.length - 1]?.id
+          ) {
+            return prev;
+          }
+          return incoming;
+        });
       }
     } catch (err) {
       if (!silent) console.warn('Could not load group messages:', err);
@@ -344,12 +388,40 @@ export default function GroupsView({
     return () => clearInterval(interval);
   }, [selectedGroup?.id]);
 
-  // Scroll to bottom of chat when new message arrives
+  // Scroll logic: only auto-scroll to bottom if user is near bottom, switched tab/group, or sent a message
   useEffect(() => {
-    if (groupTab === 'chat' && messages.length > 0) {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (groupTab !== 'chat' || messages.length === 0) return;
+
+    const groupChanged = prevGroupIdRef.current !== selectedGroup?.id;
+    const tabChanged = prevTabRef.current !== groupTab;
+    prevGroupIdRef.current = selectedGroup?.id;
+    prevTabRef.current = groupTab;
+
+    if (groupChanged || tabChanged) {
+      scrollToBottom(false);
+      prevMessagesLengthRef.current = messages.length;
+      return;
     }
-  }, [messages, groupTab]);
+
+    if (userJustSentMsgRef.current) {
+      userJustSentMsgRef.current = false;
+      scrollToBottom(true);
+      prevMessagesLengthRef.current = messages.length;
+      return;
+    }
+
+    if (isNearBottomRef.current) {
+      scrollToBottom(true);
+    } else {
+      // User is scrolled up reading chat history: do NOT disrupt their scroll!
+      if (messages.length > prevMessagesLengthRef.current) {
+        const diff = messages.length - prevMessagesLengthRef.current;
+        setUnreadBelowCount((c) => c + diff);
+      }
+    }
+
+    prevMessagesLengthRef.current = messages.length;
+  }, [messages, groupTab, selectedGroup?.id]);
 
   const handleSendMessage = async (e) => {
     if (e) e.preventDefault();
@@ -364,6 +436,9 @@ export default function GroupsView({
     const msgText = chatInput.trim();
     setChatInput('');
     setShowEmojiPicker(false);
+
+    userJustSentMsgRef.current = true;
+    isNearBottomRef.current = true;
 
     // Optimistic UI display
     const tempId = 'temp-' + Date.now();
@@ -896,7 +971,7 @@ export default function GroupsView({
               </div>
 
               {/* Scrollable Message Bubbles */}
-              <div className="flex-1 overflow-y-auto p-4 space-y-3">
+              <div ref={chatContainerRef} onScroll={handleChatScroll} className="flex-1 overflow-y-auto p-4 space-y-3">
                 {/* Date Header Pill */}
                 <div className="flex justify-center">
                   <span className="px-3 py-0.5 rounded-md text-[10px] font-bold tracking-wider uppercase bg-white/80 dark:bg-slate-800/80 text-slate-600 dark:text-slate-300 shadow-2xs backdrop-blur-xs">
@@ -982,6 +1057,24 @@ export default function GroupsView({
                 })}
                 <div ref={messagesEndRef} />
               </div>
+
+              {/* Floating Jump to Latest Button (WhatsApp/Telegram style) */}
+              {showScrollBottom && (
+                <button
+                  type="button"
+                  onClick={() => scrollToBottom(true)}
+                  className="absolute bottom-20 right-4 z-20 flex items-center gap-1.5 px-3 py-1.5 bg-white dark:bg-[#202c33] text-slate-700 dark:text-slate-200 rounded-full shadow-lg border border-slate-200/90 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-[#2a3942] transition-all text-xs font-semibold animate-fade-in"
+                  title="Jump to latest messages"
+                >
+                  <ChevronDown className="w-3.5 h-3.5 text-[#00a884]" />
+                  <span>Latest</span>
+                  {unreadBelowCount > 0 && (
+                    <span className="px-1.5 py-0.5 rounded-full bg-[#00a884] text-white text-[10px] font-bold">
+                      +{unreadBelowCount}
+                    </span>
+                  )}
+                </button>
+              )}
 
               {/* Emoji Picker Tray (WhatsApp-Style) */}
               {showEmojiPicker && (
