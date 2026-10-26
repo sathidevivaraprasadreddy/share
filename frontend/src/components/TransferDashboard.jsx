@@ -44,7 +44,7 @@ export default function TransferDashboard({
   onError,
   onSuccess
 }) {
-  const [activeTab, setActiveTab] = useState('send'); // 'send' | 'receive' | 'p2p'
+  const [activeTab, setActiveTab] = useState('send'); // 'send' | 'receive'
   const [sendMode, setSendMode] = useState('link'); // 'link' | 'direct'
 
   // Files state

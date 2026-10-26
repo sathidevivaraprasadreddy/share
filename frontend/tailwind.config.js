@@ -4,6 +4,7 @@ export default {
   content: [
     "./index.html",
     "./src/**/*.{js,ts,jsx,tsx}",
+    "!./src/**/WebRTCTransfer.jsx"
   ],
   theme: {
     extend: {

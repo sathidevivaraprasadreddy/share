@@ -1,33 +1,34 @@
 # QuickShare 🚀
-> **Advanced, 100% Free & Open-Source Ephemeral File-Sharing Platform**  
-> Direct peer-to-peer WebRTC data channels, 6-digit transfer codes, cryptographic share links, in-app recipient inboxes, WhatsApp-style group collaboration, PWA mobile installability, and zero-cost cloud deployment.
+> **Modern, 100% Free & Open-Source Ephemeral File-Sharing Platform**  
+> 6-digit transfer codes, cryptographic share links, in-app recipient inboxes, WhatsApp-style collaboration groups with real-time chat, admin moderation control center, PWA mobile installability, and zero-cost cloud deployment.
 
 ![QuickShare Banner](https://img.shields.io/badge/Status-Production%20Ready-emerald)
 ![Free Stack](https://img.shields.io/badge/Cost-%E2%82%B90%20Zero%20Paid%20Tiers-rose)
 ![Node Engine](https://img.shields.io/badge/Node.js-v22%2B%20Native%20SQLite%20Ready-blue)
-![WebRTC](https://img.shields.io/badge/WebRTC-P2P%20DataChannels-indigo)
+![Database](https://img.shields.io/badge/Database-TiDB%20Serverless%20%2F%20SQLite-indigo)
 ![Tests](https://img.shields.io/badge/Tests-56%2F56%20Passing-emerald)
 
 ---
 
 ## 🌐 Live Production Application
-- **Frontend Web Application:** [https://quickshare-azure.vercel.app/](https://quickshare-azure.vercel.app/)
-- **Backend REST & WebSocket API:** [https://quickshare-api-hbal.onrender.com/](https://quickshare-api-hbal.onrender.com/)
-- **WebRTC Signaling Endpoint:** `wss://quickshare-api-hbal.onrender.com/ws`
-- **Cloud Database:** Built-in Zero-Config SQLite or TiDB Serverless (Cloud MySQL wire-compatible)
-- **Persistent Cloud Storage:** Supabase Object Storage / Cloudflare R2 (S3-compatible) or Local
+- **Frontend Web Application:** [https://quickshare-nbkr.vercel.app/](https://quickshare-nbkr.vercel.app/)
+- **Backend REST API:** [https://share-api-0xvn.onrender.com/api](https://share-api-0xvn.onrender.com/api)
+- **API Health Check:** [https://share-api-0xvn.onrender.com/api/health](https://share-api-0xvn.onrender.com/api/health)
+- **Cloud Database:** TiDB Serverless (5 GB free forever, MySQL 8 compatible)
+- **Cloud Object Storage:** Supabase S3 Object Storage (`quickshare-files`)
+- **Admin Control Center:** Accessible via `/admin`, `/control-center`, or user profile & footer menu
 - **GitHub Repository:** [https://github.com/sathidevivaraprasadreddy/share](https://github.com/sathidevivaraprasadreddy/share)
 
 ---
 
 ## 📋 Table of Contents
 1. [Overview & Product Vision](#-overview--product-vision)
-2. [Multiple Sharing Methods](#-multiple-sharing-methods)
+2. [Active Transfer Mechanisms](#-active-transfer-mechanisms)
 3. [Core Feature Areas](#-core-feature-areas)
 4. [Technology Architecture](#-technology-architecture)
-5. [₹0 Zero-Cost Cloud Stack & Provider Quotas](#-0-zero-cost-cloud-stack--provider-quotas)
+5. [₹0 Zero-Cost Cloud Stack](#-0-zero-cost-cloud-stack)
 6. [Zero-Config Local Development](#-zero-config-local-development)
-7. [Production Deployment Guide (1-Click Unified or Split)](#-production-deployment-guide)
+7. [Production Deployment Guide](#-production-deployment-guide)
 8. [Automated Testing Suite (56/56 Tests)](#-automated-testing-suite)
 9. [Security, Privacy & Data Lifecycle](#-security-privacy--data-lifecycle)
 
@@ -35,34 +36,33 @@
 
 ## 🌟 Overview & Product Vision
 
-QuickShare is designed for individual users, students, teams, and communities who need to share files securely across devices without forced signups, intrusive ads, or costly subscriptions.
+QuickShare is designed for individuals, students, teams, and organizations who need to share files securely across devices without forced subscriptions, intrusive ads, or paid paywalls.
 
 QuickShare supports **both guests and registered users**:
-- **Guest Mode:** No account required. Drop files anywhere, get an instant 6-digit code or share link, and transfer immediately.
-- **Registered Account (Free):** Unlocks persistent file management, custom avatars, recipient in-app inboxes, team collaboration groups with live chat, audit logs, and personal cloud storage.
+- **Guest Mode:** No registration required. Upload files instantly, get a secure 6-digit code or encrypted share link, and transfer right away.
+- **Registered Account (Free):** Unlocks persistent cloud file management, recipient in-app inboxes, team collaboration groups with live chat, personal storage quotas, custom avatars, and audit history.
 
 ---
 
-## ⚡ Multiple Sharing Methods
+## ⚡ Active Transfer Mechanisms
 
-Unlike traditional platforms that rely strictly on public URLs, QuickShare provides four distinct transfer mechanisms tailored for different sharing scenarios:
+QuickShare provides three distinct transfer mechanisms:
 
 ### 1. 🔢 Six-Digit Quick Codes
-- **How it works:** Sender gets a random 6-digit transfer code (e.g. `839 204`). The receiver opens QuickShare, navigates to **Receive**, enters the code, and downloads immediately.
-- **Security:** Protected against brute-force attacks by progressive attempt throttling and server-side rate limits. Sessions expire automatically.
+- **How it works:** The sender receives an instant, random 6-digit code (e.g., `839 204`). The receiver navigates to **Receive**, enters the code, and immediately downloads the files.
+- **Security:** Protected against brute-force attacks via server-side progressive rate-limiting and session timeouts.
 
-### 2. ⚡ Browser-to-Browser WebRTC (P2P Direct Transfer)
-- **How it works:** Connects sender and receiver directly through encrypted WebRTC DataChannels with real-time WebSocket signaling (`/ws`).
-- **Benefits:** Files stream directly from RAM to RAM without passing through or consuming server storage quotas. Perfect for transferring large files across computers, laptops, and smartphones on the same Wi-Fi or across the internet.
+### 2. 📥 Direct In-App Inbox Delivery
+- **How it works:** Authenticated senders can dispatch files directly to any registered user's inbox (e.g. `@alice`, `@bob`) with live username autocomplete search.
+- **WhatsApp Checkmarks:** Real-time delivery status icons:
+  - **✓ Sent**
+  - **✓✓ Delivered to Inbox**
+  - **✓✓ (Green) Downloaded by Recipient**
+- **Safety:** Recipients can view file details and notes, and accept or decline transfers. Supports optional password protection and burn-on-download (auto-delete after first download).
 
-### 3. 📥 Direct In-App Inbox Delivery
-- **How it works:** Authenticated senders can dispatch files directly into any registered user's inbox (e.g. `@alice`, `@bob`) with username autocomplete suggestions.
-- **WhatsApp Checkmarks:** Live delivery status icons: **✓ Sent**, **✓✓ Delivered to Inbox**, **✓✓ (Green) Downloaded**.
-- **Privacy & Safety:** Recipients can preview descriptions, and accept or decline transfers. Supports optional password protection and burn-on-download (auto-delete after first download).
-
-### 4. 🔗 Ephemeral Links & Mobile QR Codes
+### 3. 🔗 Ephemeral Links & Mobile QR Codes
 - **How it works:** Generates high-entropy 128-bit unguessable tokens (`crypto.randomBytes(16)`) and high-contrast QR codes for instant smartphone camera scanning.
-- **Protection:** Supports optional bcrypt password protection, configurable download limits, and customizable expiry windows (1h, 6h, 24h, 3d, 7d).
+- **Protection:** Optional bcrypt password protection, download count limits, and customizable expiry windows (1h, 6h, 24h, 3d, 7d).
 
 ---
 
@@ -71,36 +71,37 @@ Unlike traditional platforms that rely strictly on public URLs, QuickShare provi
 ```
 QuickShare Navigation
 ├── 📤 Transfer Dashboard
-│   ├── Send (Link & 6-Digit Code / Direct to Inbox / Group Share)
-│   ├── Receive (6-Digit Code lookup & instant retrieve)
+│   ├── Send (Link & 6-Digit Code / Direct to User Inbox / Group Share)
+│   ├── Receive (6-Digit Code lookup & instant download)
 │   ├── Global Drag & Drop Overlay (Drop files anywhere to share)
-│   └── Quick P2P (WebRTC Browser-to-Browser Data Channels)
+│   └── Security Options (Password protection, custom expiry, burn-on-download)
 ├── 📥 Recipient Inbox (Directly received files with WhatsApp checkmarks, notes & rename)
 ├── 📁 My Files (Cloud drive, category filters, inline rename, trash bin & restore)
-├── 👥 Collaboration Groups (Group chat with emojis, file attachments, rename & delete)
-├── 🛡️ Admin Control Center (/control-center - MFA, user moderation, audit logs & CSV export)
+├── 👥 Collaboration Groups (WhatsApp-style group chat, emojis, attachments, rename & files tab)
+├── 🛡️ Admin Control Center (/admin or /control-center - MFA, user moderation, audit logs & CSV export)
 ├── ⏱️ Activity Timeline (Audit logs for uploads, downloads, and revocations)
-├── 🔔 Notifications (Live transfer alerts, audio pings & unread badge)
+├── 🔔 Notifications (Live transfer alerts, audio chimes & unread badge)
 └── ⚙️ Profile & Quota (Avatar color picker, storage meter, password change, Danger Zone)
 ```
 
 - **💬 Real-Time Group Chat & File Sharing:**
-  - WhatsApp-style chat bubbles with message timestamps, emoji reactions, and delivery checkmarks.
+  - WhatsApp-style chat bubbles with message timestamps, avatar initials, and delivery checkmarks.
   - Attachment staging drawer allowing senders to preview and **rename files (✏️)** before sending.
+  - **Smart auto-scroll:** Preserves scroll position when reading earlier messages; scrolls down automatically only when at the bottom or sending a message.
+  - **Floating Jump-to-Latest Button:** WhatsApp-style floating pill with unread count indicator when scrolled up.
   - Dedicated **Files Tab** in groups with individual file deletion (🗑️), file rename, and batch ZIP archive download.
   - Active group **QR Code Modal** with live invite code display and 1-click WhatsApp / Copy Link sharing.
+
 - **📱 Installable Progressive Web App (PWA):**
-  - Includes Web App Manifest (`manifest.json`) and vector app icons for installing QuickShare as a native app on Android, iOS Safari, and desktop browsers.
-- **🎨 Modern Tactile Micro-Interactions:**
-  - Zero-layout-shift floating toasts, smooth button click feedback (`active:scale-[0.98]`), and card hover lifts.
-- **📡 Offline / Online Detection:**
-  - Detects network disconnects and gracefully queues transfers until reconnected.
-- **🔑 Real-World Multi-Option Authentication:**
-  - **Official Google OAuth 2.0 (Google Identity Services):** Real Google Sign-In popup with cryptographic JWT token verification.
-  - **Real Email OTP (100% Free):** 6-digit one-time codes dispatched directly via SMTP / Nodemailer.
-  - **Cellular SMS OTP:** Supports real SMS delivery to mobile phones via Fast2SMS (free signup credits in India) and Twilio.
+  - Includes Web App Manifest (`manifest.json`) and vector app icons for installing QuickShare as a native app on Android, iOS Safari, Windows, and macOS.
+
+- **🔑 Multi-Option Authentication:**
+  - **Google OAuth 2.0 (Google Identity Services):** One-tap Google Sign-In with cryptographic JWT token verification.
+  - **Email OTP (100% Free):** 6-digit one-time codes dispatched directly via SMTP / Nodemailer.
+  - **Cellular SMS OTP:** Supports real SMS delivery to mobile phones via Fast2SMS and Twilio.
   - **Standard Email & Password:** Bcrypt hashed credentials with salted rounds.
-- **🛡️ Admin Control Center (`/control-center`):**
+
+- **🛡️ Admin Control Center (`/admin` or `/control-center`):**
   - Multi-Factor Authentication (MFA PIN) protected.
   - Real-time user management (suspend, session revoke, password reset).
   - Group and chat moderation (view all messages, delete inappropriate content).
@@ -113,27 +114,36 @@ QuickShare Navigation
 
 ```
 [ Client Browsers & Mobile PWA ]
-       │                    ▲
-       │ HTTPS / REST       │ WebRTC DataChannels (P2P Files)
-       ▼                    ▼
-[ Node.js + Express Server & WebSocket Hub (Unified or Split) ]
-       │                    │
-       ├── WebRTC Signaling (/ws)
-       ├── Static SPA Hosting (Serves frontend/dist in Unified mode)
+       │
+       │ HTTPS / REST API
+       ▼
+[ Node.js + Express Backend on Render ]
+       │
        ├── Rate Limiter & Security Headers (Helmet, CORS)
-       ├── Storage Driver Adapter (Local Disk / S3 Object Storage)
+       ├── Storage Driver Adapter (Local Disk / Supabase S3 Object Storage)
        └── Dual-Engine Database Adapter
-             ├── Built-in Local & Cloud: Node.js Native SQLite (`node:sqlite`)
-             └── Production Cloud MySQL: TiDB Serverless / Aiven / Supabase
+             ├── Local Development: Built-in Node.js Native SQLite (node:sqlite)
+             └── Production Cloud: TiDB Serverless (MySQL 8 wire-compatible)
 ```
 
 | Layer | Local Development | ₹0 Production Cloud Deployment |
 | :--- | :--- | :--- |
-| **Frontend** | React 18, Vite, Tailwind CSS, Lucide Icons | Vercel or Unified on Render / Railway |
-| **Backend** | Node.js 22+ (ESM), Express, `ws` (WebSockets) | Render Free Tier (`*.onrender.com`) |
-| **Database** | Node.js Native SQLite (`node:sqlite`) | Built-in SQLite with `DB_PATH` or TiDB Serverless |
-| **Storage** | Local Filesystem (`backend/uploads`) | Supabase Object Storage / Cloudflare R2 (S3) |
-| **Signaling** | Native WebSocket Server (`/ws`) | Render WebSocket Tunneling |
+| **Frontend** | React 18, Vite, Tailwind CSS, Lucide Icons | Vercel Edge CDN (`quickshare-nbkr.vercel.app`) |
+| **Backend** | Node.js 22+ (ESM), Express | Render Free Tier (`share-api-0xvn.onrender.com`) |
+| **Database** | Node.js Native SQLite (`node:sqlite`) | TiDB Serverless (5 GB free forever) |
+| **Storage** | Local Filesystem (`backend/uploads`) | Supabase Object Storage (`quickshare-files`) |
+
+---
+
+## 💰 ₹0 Zero-Cost Cloud Stack
+
+| Component | Free Provider | Free Tier Allocation | Credit Card Required? |
+| :--- | :--- | :--- | :--- |
+| **Frontend** | Vercel | Unlimited bandwidth & continuous deployment | ❌ No |
+| **Backend API** | Render | 750 free compute hours/month | ❌ No |
+| **Database** | TiDB Cloud Serverless | 5 GB storage + 50M Request Units/month | ❌ No |
+| **Object Storage** | Supabase Storage | 1 GB storage + 2 GB bandwidth/month | ❌ No |
+| **Google Auth** | Google Cloud Console | Unlimited free OAuth 2.0 logins | ❌ No |
 
 ---
 
@@ -158,74 +168,7 @@ npm --prefix backend install
 npm --prefix frontend install
 ```
 
-### 3. Start Both Servers Concurrently
-```bash
-# Terminal 1: Backend
-npm --prefix backend run dev
-
-# Terminal 2: Frontend
-npm --prefix frontend run dev
-```
-
-Open your browser at: **`http://localhost:5180`**
-
----
-
-## 🚀 Production Deployment Guide
-
-### Option A: Unified 1-Click Deploy on Render (Recommended)
-1. Push your repository to GitHub.
-2. Sign in to [Render](https://render.com/) and click **New +** -> **Web Service**.
-3. Connect your GitHub repository. Render reads [render.yaml](render.yaml) automatically:
-   - **Build Command:** `npm run build`
-   - **Start Command:** `npm start`
-   - **Plan:** Free
-4. Click **Create Web Service**. Render compiles the frontend, boots the backend, and serves the entire fullstack app on a free `*.onrender.com` URL!
-
-### Option B: Split Deploy (Frontend on Vercel + Backend on Render)
-- **Backend on Render:**
-  - Build Command: `npm --prefix backend install`
-  - Start Command: `node backend/src/server.js`
-- **Frontend on Vercel:**
-  - Root Directory: `frontend`
-  - Environment Variable: `VITE_API_URL=https://your-backend.onrender.com/api`
-
----
-
-## 🧪 Automated Testing Suite
-
-QuickShare includes a rigorous automated test suite powered by Jest and Supertest verifying critical security and user flows:
-
-```bash
-npm --prefix backend test
-```
-
-### Verified Test Coverage (56/56 Passing - 100%):
-- **User Authentication:** Registration, duplicate checks, bcrypt verification, JWT signing, profile updates, and password changes.
-- **Share Sessions & Uploads:** Single/multi-file uploads, mime-type sanitization, SHA-256 hash calculation, quota verification.
-- **6-Digit Codes & Direct Transfer:** Code lookup, rate-limiting lockout verification, direct delivery into recipient inboxes.
-- **Inbox Operations:** Read/pinned/archived state updates, delivery checkmarks, and non-destructive removal verification.
-- **File Management:** Category filtering (`images`, `documents`, `archives`, `trash`), inline rename, soft-delete to trash, restore, and permanent purge.
-- **Collaboration Groups:** Group creation, member additions, role checks, group share linking, individual file deletion, and batch revocation.
-- **Owner Revocation:** Rejection of unauthorized revokes and verified physical file destruction on valid revocation.
-
----
-
-## 🔒 Security, Privacy & Data Lifecycle
-
-- **High-Entropy Tokens:** Share tokens are generated with 16 cryptographically random bytes ($2^{128}$ combinations). Revocation tokens utilize 24 bytes ($2^{192}$ combinations), preventing brute-force enumeration.
-- **Path Traversal Guards:** File paths are strictly sanitized with `path.basename()` and verified against upload directory boundaries with `resolveSafePath()`.
-- **Remote Execution Prevention:** Uploads are stored outside public web roots and served with `Content-Disposition: attachment` and `X-Content-Type-Options: nosniff`.
-- **Prepared Parameterized Queries:** 100% of database queries use parameterized placeholders (`?`) preventing SQL injection across both SQLite and MySQL engines.
-- **Non-Destructive Inbox Deletion:** Removing an item from an inbox deletes only the recipient's view entry; the underlying file remains intact for the owner.
-- **Immediate Physical Purge:** Revocation or expiration immediately deletes the file from disk or cloud S3 storage.
-
----
-
-## 📜 License
-This project is open-source and released under the [MIT License](LICENSE).
-
-### 4. Run Both Servers Concurrently
+### 3. Run Both Servers Concurrently
 From the root project directory:
 ```bash
 npm run dev
@@ -266,25 +209,26 @@ Open your browser at: **`http://localhost:5180`**
    - `PORT`: `10000`
    - `DATABASE_URL`: *(your TiDB connection URL from Phase 1)*
    - `JWT_SECRET`: *(secure random string of 32+ characters)*
-   - `STORAGE_DRIVER`: `s3` *(or `local` if testing)*
+   - `STORAGE_DRIVER`: `s3`
    - `S3_ENDPOINT`: *(your Supabase / Cloudflare R2 endpoint)*
    - `S3_REGION`: `auto`
    - `S3_ACCESS_KEY_ID`: *(your S3 Access Key)*
    - `S3_SECRET_ACCESS_KEY`: *(your S3 Secret Key)*
    - `S3_BUCKET_NAME`: `quickshare-files`
-   - `FRONTEND_URL`: `https://your-quickshare.vercel.app`
-5. Click **Deploy Web Service**. Render assigns a free URL: `https://quickshare-api-hbal.onrender.com`.
+   - `FRONTEND_URL`: `https://quickshare-nbkr.vercel.app`
+5. Click **Deploy Web Service**.
 
 ### Phase 3: Deploy Frontend to Vercel (₹0)
 1. Sign in to [Vercel](https://vercel.com/) and click **Add New** -> **Project**.
-2. Import your GitHub repository and configure:
+2. Import your GitHub repository (`share` or `quickshare`) and configure:
    - **Root Directory:** `frontend`
    - **Framework Preset:** `Vite`
    - **Build Command:** `npm run build`
    - **Output Directory:** `dist`
-3. Add Environment Variable:
-   - `VITE_API_URL`: `https://quickshare-api-hbal.onrender.com/api`
-4. Click **Deploy**. Vercel deploys to edge CDN with SSL at `https://your-quickshare.vercel.app`.
+3. Add Environment Variables:
+   - `VITE_API_URL`: `https://share-api-0xvn.onrender.com/api`
+   - `VITE_GOOGLE_CLIENT_ID`: *(your Google OAuth Client ID)*
+4. Click **Deploy**. Vercel serves the app globally on `https://quickshare-nbkr.vercel.app`.
 
 ---
 
