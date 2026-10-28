@@ -76,3 +76,4 @@ ppt_10_slides_preview/
 export_pdf.ps1
 export_slides_png.ps1
 build_10_slide_presentation.py
+generate_perfect_10_slides.py
