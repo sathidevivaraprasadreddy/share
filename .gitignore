@@ -69,3 +69,10 @@ QuickShare_Work.pptx
 # PowerPoint Presentations (Keep local only, do not upload to GitHub)
 *.pptx
 *.ppt
+
+# Presentations & Slide Previews (Local only)
+*.pdf
+ppt_10_slides_preview/
+export_pdf.ps1
+export_slides_png.ps1
+build_10_slide_presentation.py
