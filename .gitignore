@@ -65,3 +65,7 @@ inspect_style.py
 presentation_audit.txt
 existing_presentation.pptx
 QuickShare_Work.pptx
+
+# PowerPoint Presentations (Keep local only, do not upload to GitHub)
+*.pptx
+*.ppt
