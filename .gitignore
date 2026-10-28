@@ -58,3 +58,10 @@ build_comprehensive_presentation.py
 capture_all_screens.js
 capture_all_screens_loggedin.js
 test_theme.js
+build_professional_presentation.py
+dump_all_slides.py
+inspect_presentation.py
+inspect_style.py
+presentation_audit.txt
+existing_presentation.pptx
+QuickShare_Work.pptx
